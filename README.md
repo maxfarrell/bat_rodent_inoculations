@@ -1,6 +1,6 @@
-# Limited evidence for unique viral tolerance in bats
+# Experimental infections reveal unexceptional viral tolerance in bats
 
-Data and code to reproduce the analyses in "Limited evidence for unique viral tolerance in bats"
+Data and code to reproduce the analyses in "Experimental infections reveal unexceptional viral tolerance in bats"
 
 ## Package Management
 
