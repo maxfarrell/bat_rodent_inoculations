@@ -28,6 +28,9 @@ Then set working directory to `scripts` and run scripts in the following order:
 
 8. `brms_models.rmd` - conducts Bayesian hierarchical models via brms + Stan and outputs `brms_models.html`
 
+9. `model_summaries.rmd` - generates combined forest plots for brms models. 
+
+10. `scaling_plotting_functions.R` - common functions for formatting data and outputs (plots and tables).
 
 ## Data
 
