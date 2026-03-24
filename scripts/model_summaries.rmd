@@ -1,0 +1,422 @@
+---
+title: "Model summaries: Viral disease outcomes are indistinguishable between experimentally infected bats and rodents"
+author: "Maxwell J. Farrell"
+# date: "`r format(Sys.time(), '%B %d %Y')`"
+output: 
+  html_document:
+    highlight: default
+    code_folding: hide
+    toc: yes
+    toc_depth: 4
+    toc_float: true
+    collapsed: true
+    df-print: paged
+    theme: spacelab
+urlcolor: blue
+
+---
+
+
+
+```{r loading packages, echo=F, message=F, warning=F}
+# Packages 
+require(ape)#;packageVersion("ape")#5.5
+require(dplyr)#;packageVersion("dplyr")#1.1.4
+require(tidyr)#;packageVersion("tidyr")#1.3.0
+require(ggplot2)#;packageVersion("ggplot2")#3.4.4
+require(ggtree)#;packageVersion("ggtree")#3.0.4
+require(lubridate)#;packageVersion("lubridate")#1.8.0
+require(cowplot)#;packageVersion("cowplot")#1.1.1
+require(parameters)#;packageVersion("parameters")#0.21.6
+require(knitr)#;packageVersion("knitr")#1.4.9
+require(kableExtra)#;packageVersion("kableExtra")#1.3.4
+require(tidybayes)#;packageVersion("tidybayes")#3.0.6
+require(brms)#;packageVersion("brms")#2.21.6
+require(bayesplot)#;packageVersion("bayesplot")#1.8.1
+bayesplot_theme_set(theme_bw())
+
+options(dplyr.summarise.inform = FALSE)
+
+# set colours for bats and rodents
+colours_BR <- c("#AB1808","#1B85BF")
+
+# set seed
+set.seed(1989666)
+
+# markdown setup
+knitr::opts_chunk$set(echo=T, eval=T, message=F, warning=F) 
+
+# plotting functions
+source('./scaling_plotting_functions.R')
+
+```
+
+
+# Full models
+
+```{r plots_full_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_full.rds")
+s_mort <- readRDS("../fit_models/spec_mort_full.rds")
+s_sev <- readRDS("../fit_models/spec_severity_full.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_full.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_full.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_full.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals.pdf", cp, width=11.5, height=3.5)
+
+```
+
+
+# Reservoir Match Models
+
+## Adding Reservoir Match
+
+```{r plots_resMatch_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_resMatch.rds")
+s_mort <- readRDS("../fit_models/spec_mort_resMatch.rds")
+s_sev <- readRDS("../fit_models/spec_severity_resMatch.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_resMatch.rds")
+i_mort <- readRDS("../fit_models/indiv_mortality_resMatch.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_resMatch.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_resMatch.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+## Reservoir Match without Host Evolutionary Isolation
+
+```{r plots_resMatch_noHEI_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_resMatch_alone.rds")
+s_mort <- readRDS("../fit_models/spec_mort_resMatch_alone.rds")
+s_sev <- readRDS("../fit_models/spec_severity_resMatch_alone.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_resMatch_alone.rds")
+i_mort <- readRDS("../fit_models/indiv_mortality_resMatch_alone.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_resMatch_alone.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_resMatch_alone.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+## Reservoir Match x Host Order Interaction
+
+```{r plots_resMatch_inter, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_resMatch_inter.rds")
+s_mort <- readRDS("../fit_models/spec_mortality_resMatch_inter.rds")
+s_sev <- readRDS("../fit_models/spec_severity_resMatch_inter.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_resMatch_inter.rds")
+i_mort <- readRDS("../fit_models/indiv_mortality_resMatch_inter.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_resMatch_inter.rds")
+
+## Joint plot
+
+padding <- theme(plot.margin = unit(c(t=0.1, r=0.1, b=0, l=0), "cm"))
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_resMatch_inter.pdf", cp, width=11.5, height=3.5)
+
+# padding <- theme(plot.margin = unit(c(t=0.1, r=0.1, b=0, l=0), "cm"))
+    
+# cp <- egg::ggarrange(        
+#     (intervals_plot(i_dis) + padding + theme(axis.text.y=element_text(size=12)) + ggtitle("A) Disease presence")), 
+#     (intervals_plot(i_mort) + padding + theme(axis.text.y=element_blank()) + ggtitle("B) Mortality")), 
+#     (intervals_plot(i_sev) + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+# ggsave("../plots_tables/combined_individual_intervals_resMatch_inter.pdf", cp, width=11.5, height=3.5)
+
+cp <- egg::ggarrange(        
+    (plot_conditional_effects(s_dis, "Probability of disease outcome") + padding + theme(axis.text.y=element_text(size=12), legend.position="none") + ggtitle("A) Disease presence")), 
+    (plot_conditional_effects(s_mort, "") + padding + theme(axis.text.y=element_blank(), legend.position="none") + ggtitle("B) Mortality")), 
+    (plot_conditional_effects(s_sev, "") + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+ggsave("../plots_tables/species_conditional_effects_resMatch_inter.pdf", cp, width=11.5, height=3.5)
+
+cp2 <- egg::ggarrange(        
+    (plot_conditional_effects(i_dis, "Probability of disease outcome") + padding + theme(axis.text.y=element_text(size=12), legend.position="none") + ggtitle("A) Disease presence")), 
+    (plot_conditional_effects(i_mort, "") + padding + theme(axis.text.y=element_blank(), legend.position="none") + ggtitle("B) Mortality")), 
+    (plot_conditional_effects(i_sev, "") + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+
+ggsave("../plots_tables/individual_conditional_effects_resMatch_inter.pdf", cp2, width=11.5, height=3.5)
+
+
+```
+
+
+
+# Removing Lyssaviruses
+
+## Full model excluding lyssaviruses
+
+```{r plots_nolys_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_nolys.rds")
+s_mort <- readRDS("../fit_models/spec_mort_nolys.rds")
+s_sev <- readRDS("../fit_models/spec_severity_nolys.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_nolys.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_nolys.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_nolys.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_nolys.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+## No lyssaviruses with reservoir match added
+
+```{r plots_nolys_resMatch_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_resMatch_nolys.rds")
+s_mort <- readRDS("../fit_models/spec_mort_resMatch_nolys.rds")
+s_sev <- readRDS("../fit_models/spec_severity_resMatch_nolys.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_resMatch_nolys.rds")
+i_mort <- readRDS("../fit_models/indiv_mortality_resMatch_nolys.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_resMatch_nolys.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_resMatch_nolys.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+# Restricting to Homologous and Heterologous inoculations
+
+## Homologous inoculations
+
+```{r plots_homoHosts_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_homoHosts.rds")
+s_mort <- readRDS("../fit_models/spec_mort_homoHosts.rds")
+s_sev <- readRDS("../fit_models/spec_severity_homoHosts.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_homoHosts.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_homoHosts.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_homoHosts.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_homoHosts.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+## Heterologous inoculations
+
+```{r plots_heteroHosts_models, fig.width=10}
+
+s_dis <- readRDS("../fit_models/spec_disease_heteroHosts.rds")
+s_mort <- readRDS("../fit_models/spec_mort_heteroHosts.rds")
+s_sev <- readRDS("../fit_models/spec_severity_heteroHosts.rds")
+
+i_dis <- readRDS("../fit_models/indiv_disease_heteroHosts.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_heteroHosts.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_heteroHosts.rds")
+
+cp <- six_panel_forest_plot(s_dis, i_dis, s_mort, i_mort, s_sev, i_sev)
+
+ggsave("../plots_tables/combined_species_individual_intervals_heteroHosts.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+# Alternative dose adjustments
+
+## Raw dose (no body mass adjustment)
+
+```{r plots_dose_amount, fig.width=10}
+  
+i_dis <- readRDS("../fit_models/indiv_disease_dose_amount.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_dose_amount.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_dose_amount.rds")
+
+## Joint plot
+
+padding <- theme(plot.margin = unit(c(t=0.1, r=0.1, b=0, l=0), "cm"))
+    
+cp <- egg::ggarrange(        
+    (intervals_plot(i_dis) + padding + theme(axis.text.y=element_text(size=12)) + ggtitle("A) Disease presence")), 
+    (intervals_plot(i_mort) + padding + theme(axis.text.y=element_blank()) + ggtitle("B) Mortality")), 
+    (intervals_plot(i_sev) + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+ggsave("../plots_tables/combined_individual_intervals_dose_amount.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+## Dose and  mass mass as separate predictors
+
+```{r plots_dose_amount_mass, fig.width=10}
+  
+i_dis <- readRDS("../fit_models/indiv_disease_dose_amount_mass.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_dose_amount_mass.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_dose_amount_mass.rds")
+
+## Joint plot
+
+padding <- theme(plot.margin = unit(c(t=0.1, r=0.1, b=0, l=0), "cm"))
+    
+cp <- egg::ggarrange(        
+    (intervals_plot(i_dis) + padding + theme(axis.text.y=element_text(size=12)) + ggtitle("A) Disease presence")), 
+    (intervals_plot(i_mort) + padding + theme(axis.text.y=element_blank()) + ggtitle("B) Mortality")), 
+    (intervals_plot(i_sev) + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+ggsave("../plots_tables/combined_individual_intervals_dose_amount_mass.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+
+# Subset to viruses inoculated into both host orders
+
+```{r plots_both_orders, fig.width=10}
+  
+i_dis <- readRDS("../fit_models/indiv_disease_viruses_both_orders.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_viruses_both_orders.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_viruses_both_orders.rds")
+
+## Joint plot
+
+padding <- theme(plot.margin = unit(c(t=0.1, r=0.1, b=0, l=0), "cm"))
+    
+cp <- egg::ggarrange(        
+    (intervals_plot(i_dis) + padding + theme(axis.text.y=element_text(size=12)) + ggtitle("A) Disease presence")), 
+    (intervals_plot(i_mort) + padding + theme(axis.text.y=element_blank()) + ggtitle("B) Mortality")), 
+    (intervals_plot(i_sev) + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+ggsave("../plots_tables/combined_individual_intervals_viruses_both_orders.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+# Removing inocluations into the brain
+
+```{r plots_no_brain, fig.width=10}
+  
+i_dis <- readRDS("../fit_models/indiv_disease_no_brain.rds")
+i_mort <- readRDS("../fit_models/indiv_mort_no_brain.rds")
+i_sev <- readRDS("../fit_models/indiv_severity_no_brain.rds")
+
+## Joint plot
+
+padding <- theme(plot.margin = unit(c(t=0.1, r=0.1, b=0, l=0), "cm"))
+    
+cp <- egg::ggarrange(        
+    (intervals_plot(i_dis) + padding + theme(axis.text.y=element_text(size=12)) + ggtitle("A) Disease presence")), 
+    (intervals_plot(i_mort) + padding + theme(axis.text.y=element_blank()) + ggtitle("B) Mortality")), 
+    (intervals_plot(i_sev) + padding + theme(axis.text.y=element_blank(), legend.position = "right") + ggtitle("C) Severity")), ncol=3, padding=0.5)
+
+ggsave("../plots_tables/combined_individual_intervals_no_brain.pdf", cp, width=11.5, height=3.5)
+
+
+```
+
+
+# Human Case-Fatality Rate models
+
+## Base CFR model
+
+```{r crf_base_models, echo=T, eval=T, message=F, warning=F}
+
+# do bats and rodents differ in mean human CFR of inoculated viruses?
+# model with no taxonomic / phylogenetic effects - rodents infected with lower human cfr viruses
+
+cfr_base1 <- readRDS("../fit_models/cfr_base1.rds")
+
+posterior <- as.matrix(cfr_base1)
+ar1 <- mcmc_intervals(posterior, regex_pars = "b_[^I]", prob=0.8, prob_outer=0.95, point_est="mean", 
+        point_size = 3.5, outer_size=1, inner_size=3) 
+
+# model with only viral taxonomic hierarcical effects
+
+cfr_base2 <- readRDS("../fit_models/cfr_base2.rds")
+
+color_scheme_set("teal")
+posterior <- as.matrix(cfr_base2)
+ar2 <- mcmc_intervals(posterior, regex_pars = "b_[^I]", prob=0.8, prob_outer=0.95, point_est="mean", 
+        point_size = 3.5, outer_size=1, inner_size=3)
+# ar2
+
+
+# model with no viral effects, but removing bat-reservoired viruses
+
+cfr_nobatv <- readRDS("../fit_models/cfr_base3.rds")
+
+posterior <- as.matrix(cfr_nobatv)
+ar3 <- mcmc_intervals(posterior, regex_pars = "b_[^I]", prob=0.8, prob_outer=0.95, point_est="mean", 
+        point_size = 3.5, outer_size=1, inner_size=3)
+
+# # combo plot
+# p1 <- plot_grid(  ar1 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nAll viruses"), 
+#                   ar3 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nExcluding bat-reservoired viruses"), 
+#                   ar2 + xlim(-3, 2) + scale_y_discrete(labels = "With virus effects\nAll viruses"),
+#                   ncol=1, align = "v")
+# p2 <- add_sub(p1, "Host order (Chiroptera) effect", x = 0, hjust = -3.5, size=10)
+# ggdraw(p2)
+
+# ggsave("../plots_tables/CFR_models_intervals.pdf", width=6, height=4)
+
+
+
+
+### Models with only heterologous hosts
+
+# model with no virus hierarchical effects
+
+cfr_het1 <- readRDS("../fit_models/cfr_het1.rds")
+
+posterior <- as.matrix(cfr_het1)
+ar4 <- mcmc_intervals(posterior, regex_pars = "b_[^I]", prob=0.8, prob_outer=0.95, point_est="mean", 
+        point_size = 3.5, outer_size=1, inner_size=3)
+
+
+# model with only viral taxonomic hierarcical effects
+
+cfr_het2 <- readRDS("../fit_models/cfr_het2.rds")
+
+color_scheme_set("teal")
+posterior <- as.matrix(cfr_het2)
+ar5 <- mcmc_intervals(posterior, regex_pars = "b_[^I]", prob=0.8, prob_outer=0.95, point_est="mean", 
+        point_size = 3.5, outer_size=1, inner_size=3)
+# ar5
+
+# combo plot
+p1 <- plot_grid(  ar1 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nAll viruses"), 
+                  ar3 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nExcluding bat-reservoired viruses"), 
+                  ar2 + xlim(-3, 2) + scale_y_discrete(labels = "With virus effects\nAll viruses"),
+                  ar4 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nHeterologous hosts"),
+                  ar5 + xlim(-3, 2) + scale_y_discrete(labels = "With virus effects\nHeterologous hosts") + xlab("Effect of host order (Chiroptera) on human CFR") + theme(axis.title.x = element_text(vjust=-1)),
+                  ncol=1, align = "v")
+# p2 <- add_sub(p1, "Effect of host order (Chiroptera) on human case-fatality rate", x = 0, hjust = -3.5, size=10)
+p1
+
+ggsave("../plots_tables/CFR_models_intervals.pdf", p1, width=6, height=6)
+
+
+```

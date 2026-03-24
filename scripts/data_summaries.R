@@ -48,7 +48,7 @@ viruses <- read.csv("../raw_data/VirusNames_translation_Feb23_2024.csv")
 viruses <- left_join(viruses, vtax)
 
 #subset to only host reported and upham
-hosts <- hosts %>% select(Host_reported, Host_Upham) %>% unique()
+hosts <- hosts %>% dplyr::select(Host_reported, Host_Upham) %>% unique()
 
 # add names
 primary <- dplyr::left_join(primary, viruses)
@@ -64,7 +64,6 @@ dat <- full_join(indiv, speciesonly)
 # removing hosts and viruses with NA names
 dat <- dat[!is.na(dat$Virus_ICTV),]
 dat <- dat[!is.na(dat$Host_Upham),]
-
 
 # recoding disease outcomes
 dat$ClinicalDisease <- dplyr::recode(dat$ClinicalDisease, "Y"= 1, "N" = 0)
@@ -121,6 +120,14 @@ dat_patho <- dat_patho[!is.na(dat_patho$Host_Upham),]
 
 # summaries (studies with any susceptible individuals and pathology reported!)
 n_distinct(dat_patho$PaperID, na.rm=TRUE)#112
+
+# identify which articles these are for bibliography
+articles <- read.csv("../raw_data/article_metadata.csv")
+included <- articles[articles$PaperID %in% dat_patho$PaperID,]
+dim(unique(included))#112
+# View(included)
+# write.csv(included, "../clean_data/articles_susceptible_pathology.csv", row.names=FALSE)
+
 sum(dat_patho$N_individuals, na.rm=TRUE) + n_distinct(dat_patho$IndividualID, na.rm=TRUE)#5,348
 n_distinct(dat_patho$Host_Upham, na.rm=TRUE)#85
 
@@ -148,6 +155,126 @@ n_distinct(dat_patho_indiv$Host_Upham)#75
 n_distinct(dat_patho_indiv$Virus_ICTV)#44
 n_distinct(paste0(dat_patho_indiv$Host_Upham,dat_patho_indiv$Virus_ICTV))#128
 n_distinct(paste0(dat_patho_indiv$PaperID,dat_patho_indiv$Host_Upham,dat_patho_indiv$Virus_ICTV))#149
+
+
+
+###################
+## Viral passage ##
+###################
+dat_pass <- dat %>% select(PaperID, Host_order, Virus_ICTV, Passage_host) %>% unique()
+unique(dat_pass$Passage_host) %>% sort()
+
+
+# sort(unique(dat_pass$Passage_host))
+
+dat_pass$Passage_host <- factor(dat_pass$Passage_host, 
+	levels=c("Artiodactyla","Carnivora", "Chiroptera", "Diptera","Lagomorpha","Primate",
+		"Primate/Diptera/Rodentia","Rodentia","Rodentia/Diptera","Rodentia/Primate","Rodentia/Aves",
+		"Aves","Aves/Primate","None","Unknown"))
+
+colors <- c(
+			"#785EF0",
+			"limegreen",
+			"#1B85BF",
+			"black",
+			"#20908C",
+			"#D2B48C",
+			"#FFB000",
+			"#AB1808",
+			"#00274C",
+			"#F28500",
+			"#659A32",
+			"#0352fc",
+			"#AD72D6",
+			"#88CAFC",
+			"grey55"
+	)
+
+pass_stack <- ggplot(dat_pass, aes(fill=Passage_host,  x=Passage_host)) + 
+		geom_bar(position="dodge", stat="count") +
+		# geom_point(position = position_jitter(seed = 1, width = 0.2), 
+		# 	alpha=0.4) + 
+		# scale_y_continuous(trans='log10') +
+		scale_fill_manual(values=colors) + scale_color_manual(values=colors) +
+		# theme(legend.title=element_text("Passage host")) + 
+		labs(fill = "Passage host order") + 
+		# xlab("Inoculated host order") + 
+		xlab("") + 
+		ylab("Number of article-virus-host combinations") +
+		theme_bw() + theme(panel.grid.major.x = element_blank()) + 
+		theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+		facet_wrap(~Host_order)
+
+pass_stack
+
+# ggsave("../plots_tables/virus_passage_host_order.pdf", pass_stack, width=9, height=4.5)
+
+dat_pass %>% filter(Passage_host=="Chiroptera")
+# only one study used viruses passaged in bats
+
+
+######################
+# Number of passages #
+######################
+
+
+dat_npass <- dat %>% select(PaperID, Host_order, Virus_ICTV, Passage_host, N_passages) %>% unique()
+unique(dat_pass$Passage_host) %>% sort()
+
+dat_npass$Passage_host <- factor(dat_npass$Passage_host, 
+	levels=c("Artiodactyla","Carnivora", "Chiroptera", "Diptera","Lagomorpha","Primate",
+		"Primate/Diptera/Rodentia","Rodentia","Rodentia/Diptera","Rodentia/Primate","Rodentia/Aves",
+		"Aves","Aves/Primate","None","Unknown"))
+
+unique(dat_npass$N_passages)
+# Take the bigger of the two numbers for studies with ranges of passages
+dat_npass$N_passages[grep("-", dat_npass$N_passages)]
+dat_npass$N_passages <- gsub("[0-9]*-", "", dat_npass$N_passages)
+
+# Add passages when multiple different passage souces were used
+dat_npass$N_passages[grep("/", dat_npass$N_passages)]
+dat_npass$N_passages[dat_npass$N_passages=="24/2"] <- "26"
+dat_npass$N_passages[dat_npass$N_passages=="1/1"] <- "2"
+dat_npass$N_passages[dat_npass$N_passages=="1/2"] <- "3"
+dat_npass$N_passages[dat_npass$N_passages=="1/1/1"] <- "3"
+dat_npass$N_passages[dat_npass$N_passages=="1/5"] <- "6"
+
+# set "Multiple" and "Low" to "Unknown"
+dat_npass$N_passages[dat_npass$N_passages=="Multiple"] <- "Unknown"
+dat_npass$N_passages[dat_npass$N_passages=="Low"] <- "Unknown"
+
+# Set "Unknown" to NA
+dat_npass$N_passages[dat_npass$N_passages=="Unknown"] <- NA
+
+# Set to numeric
+dat_npass$N_passages <- as.numeric(dat_npass$N_passages)
+
+dat_npass %>% group_by(Host_order) %>% 
+			reframe(mean=mean(N_passages, na.rm=TRUE),
+					median=median(N_passages, na.rm=TRUE), 
+					min=min(N_passages, na.rm=TRUE),
+					max=max(N_passages, na.rm=TRUE))
+
+t.test(dat_npass$N_passages ~ dat_npass$Host_order, mu = 0, alternative = "two.sided")
+
+colours_BR <- c("#1B85BF", "#AB1808")
+
+pass_box <- dat_npass %>% ggplot(., aes(y=N_passages, x= Host_order, 
+		color=Host_order, fill=Host_order)) + 
+		geom_boxplot(outlier.shape=NA, alpha=0.2) +
+		geom_jitter(width=0.3, alpha=0.7)+
+		scale_color_manual(values=colours_BR) + 
+		scale_fill_manual(values=colours_BR) + 
+		theme_bw() + theme(panel.grid.major.x = element_blank(), legend.position = "none") +
+		scale_y_continuous(trans=scales::pseudo_log_trans(base = 10), breaks = c(-10, 0, 1, 2, 3, 5, 10, 20, 40, 100, 200, 500)) +
+		# labs(color = "Inoculated host order")+
+		xlab("\nInoculated host order") + ylab("Number of passages prior to inoculation") +
+		theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+pass_box
+
+# ggsave("../plots_tables/n_viral_passages.pdf", pass_box, width=5.5, height=5)
 
 
 
@@ -201,25 +328,91 @@ latex <- print.xtable(xtable(patho_v_fam, caption = "Proportions of host-virus p
 
 
 
-# REMOVING LYSSAVIRUSES
-dat_nolyss <- dat_patho[grep("Lyssa", dat_patho$Virus_ICTV, invert=TRUE),]
-dat_nolyss %>% group_by(Host_order) %>% summarise(n_hosts=n_distinct(Host_Upham), n_hv=n_distinct(paste(Host_Upham, Virus_ICTV)), n_diseased=sum(any_patho), n_not_diseased=sum(any_patho==0))
-# 31 bat-virus interactions showed signs of disease (17 did not)
-# 39 rodent-virus interactions showed signs of disease (43 did not)
+# # REMOVING LYSSAVIRUSES
+# dat_nolyss <- dat_patho[grep("Lyssa", dat_patho$Virus_ICTV, invert=TRUE),]
+# dat_nolyss %>% group_by(Host_order) %>% summarise(n_hosts=n_distinct(Host_Upham), n_hv=n_distinct(paste(Host_Upham, Virus_ICTV)), n_diseased=sum(any_patho), n_not_diseased=sum(any_patho==0))
+# # 31 bat-virus interactions showed signs of disease (17 did not)
+# # 39 rodent-virus interactions showed signs of disease (43 did not)
 
-patho_v_fam <- dat_nolyss %>% group_by(family) %>% summarise(
-	n_diseased_bats=sum(any_patho[Host_order=="Chiroptera"]), n_not_diseased_bats=sum(any_patho[Host_order=="Chiroptera"]==0),
-	n_diseased_rats=sum(any_patho[Host_order=="Rodentia"]), n_not_diseased_rats=sum(any_patho[Host_order=="Rodentia"]==0))
+# patho_v_fam <- dat_nolyss %>% group_by(family) %>% summarise(
+# 	n_diseased_bats=sum(any_patho[Host_order=="Chiroptera"]), n_not_diseased_bats=sum(any_patho[Host_order=="Chiroptera"]==0),
+# 	n_diseased_rats=sum(any_patho[Host_order=="Rodentia"]), n_not_diseased_rats=sum(any_patho[Host_order=="Rodentia"]==0))
 
-patho_v_fam <- patho_v_fam %>% group_by(family) %>% summarise(
-	bats_diseased=paste0(n_diseased_bats,"/",sum(n_diseased_bats,n_not_diseased_bats)),
-	rats_diseased=paste0(n_diseased_rats,"/",sum(n_diseased_rats,n_not_diseased_rats)))
+# patho_v_fam <- patho_v_fam %>% group_by(family) %>% summarise(
+# 	bats_diseased=paste0(n_diseased_bats,"/",sum(n_diseased_bats,n_not_diseased_bats)),
+# 	rats_diseased=paste0(n_diseased_rats,"/",sum(n_diseased_rats,n_not_diseased_rats)))
 
-patho_v_fam
+# patho_v_fam
 
-names(patho_v_fam) <- c("Virus family", "Bats", "Rodents")
+# names(patho_v_fam) <- c("Virus family", "Bats", "Rodents")
 
-latex <- print.xtable(xtable(patho_v_fam, caption = "Proportions of host-virus pairs showing any sign of disease across virus families and host order. Lyssaviruses removed."), 
+# latex <- print.xtable(xtable(patho_v_fam, caption = "Proportions of host-virus pairs showing any sign of disease across virus families and host order. Lyssaviruses removed."), 
+# 						include.rownames=FALSE, print.results = FALSE)
+
+# # writeLines(
+# #   c(
+# #     "\\documentclass[11pt]{article}",
+# #     "\\begin{document}",
+# #     "\\thispagestyle{empty}",
+# #     latex,
+# #     "\\end{document}"
+# #   ),
+# #   "../plots_tables/patho_by_virus_fam_nolyss.tex"
+# # )
+
+# # tools::texi2pdf("../plots_tables/patho_by_virus_fam_nolyss.tex", clean = TRUE)
+
+
+
+##################################################
+# Numbers of species showing any clinical disease #
+##################################################
+
+
+# subset to only susceptible individuals and studied with pathlogy reported
+dat_clin <- left_join(dat, primary)
+dat_clin <- dat_clin[dat_clin$Susceptible_YN==1,]
+dat_clin <- dat_clin[dat_clin$PathologyReported_YN=="Y",]
+dat_clin <- dat_clin[!is.na(dat_clin$Virus_ICTV),]
+dat_clin <- dat_clin[!is.na(dat_clin$Host_Upham),]
+
+
+# find interactions with any reported clinical disease
+dat_clin <- dat_clin %>% select(-c(PaperID, IndividualID)) %>% unique() %>% group_by(Virus_ICTV, Host_Upham, Host_order, family) %>%
+				summarise(any_clin=(sum(ClinicalDisease, na.rm=TRUE)>0)*1)
+
+dat_clin <- dat_clin[!is.na(dat_clin$Host_order),]
+dat_clin <- dat_clin[!is.na(dat_clin$Host_order),]
+
+# which paramyxivurs-host associations showed clinical disease and any disease?
+
+dat_clin %>% filter(any_clin==1, family=="Paramyxoviridae") %>% unique()
+dat_clin %>% filter(any_clin==1, family=="Filoviridae") %>% unique()
+
+dat_patho %>% filter(any_patho==1, family=="Paramyxoviridae") %>% unique()
+dat_patho %>% filter(any_patho==1, family=="Filoviridae") %>% unique()
+
+dat_patho %>% filter(any_patho==0, family=="Paramyxoviridae") %>% unique()
+dat_patho %>% filter(any_patho==0, family=="Filoviridae") %>% unique()
+
+
+dat_clin %>% group_by(Host_order) %>% summarise(n_hosts=n_distinct(Host_Upham), n_hv=n_distinct(paste(Host_Upham, Virus_ICTV)), n_clin_diseased=sum(any_clin), n_not_clin_diseased=sum(any_clin==0))
+# 35 bat-virus interactions showed signs of disease (31 did not) 
+# 32 rodent-virus interactions showed signs of disease (51 did not)
+# 35/(35+31)# 53%
+# 32/(32+51)# 38.5%
+
+clin_v_fam <- dat_clin %>% group_by(family) %>% summarise(
+	n_clinicallydiseased_bats=sum(any_clin[Host_order=="Chiroptera"]), n_not_clinicallydiseased_bats=sum(any_clin[Host_order=="Chiroptera"]==0),
+	n_clinicallydiseased_rats=sum(any_clin[Host_order=="Rodentia"]), n_not_clinicallydiseased_rats=sum(any_clin[Host_order=="Rodentia"]==0))
+
+clin_v_fam <- clin_v_fam %>% group_by(family) %>% summarise(
+	bats_clinicallydiseased=paste0(n_clinicallydiseased_bats,"/",sum(n_clinicallydiseased_bats,n_not_clinicallydiseased_bats)),
+	rats_clinicallydiseased=paste0(n_clinicallydiseased_rats,"/",sum(n_clinicallydiseased_rats,n_not_clinicallydiseased_rats)))
+
+names(clin_v_fam) <- c("Virus family", "Bats", "Rodents")
+
+latex <- print.xtable(xtable(clin_v_fam, caption = "Proportions of host-virus pairs with author reported clinical disease across virus families and host order"), 
 						include.rownames=FALSE, print.results = FALSE)
 
 # writeLines(
@@ -230,11 +423,88 @@ latex <- print.xtable(xtable(patho_v_fam, caption = "Proportions of host-virus p
 #     latex,
 #     "\\end{document}"
 #   ),
-#   "../plots_tables/patho_by_virus_fam_nolyss.tex"
+#   "../plots_tables/clinicaldisease_by_virus_fam.tex"
 # )
 
-# tools::texi2pdf("../plots_tables/patho_by_virus_fam_nolyss.tex", clean = TRUE)
+# tools::texi2pdf("../plots_tables/clinicaldisease_by_virus_fam.tex", clean = TRUE)
 
+
+#########################
+
+# Counts of host-virus interactions with sub-clinical disease only
+
+# subset to only susceptible individuals and studied with pathlogy reported
+dat_subclin <- left_join(dat, primary)
+dat_subclin <- dat_subclin[dat_subclin$Susceptible_YN==1,]
+dat_subclin <- dat_subclin[dat_subclin$PathologyReported_YN=="Y",]
+dat_subclin <- dat_subclin[!is.na(dat_subclin$Virus_ICTV),]
+dat_subclin <- dat_subclin[!is.na(dat_subclin$Host_Upham),]
+
+# find interactions with max severity rank is 2 (i.e. subclinical infection)
+dat_subclin <- dat_subclin %>% select(-c(PaperID, IndividualID)) %>% unique() %>% group_by(Virus_ICTV, Host_Upham, Host_order, family) %>%
+				summarise(any_subclin=(sum(max(severity_rank)==2, na.rm=TRUE)>0)*1)
+
+dat_subclin <- dat_subclin[!is.na(dat_subclin$Host_order),]
+dat_subclin <- dat_subclin[!is.na(dat_subclin$Host_order),]
+
+# which paramyxivurs and filovirus-host associations max severity was subclinical disease?
+
+dat_subclin %>% filter(any_subclin==1, family=="Paramyxoviridae") %>% unique()
+dat_subclin %>% filter(any_subclin==1, family=="Filoviridae") %>% unique()
+
+dat_subclin %>% group_by(Host_order) %>% summarise(n_hosts=n_distinct(Host_Upham), n_hv=n_distinct(paste(Host_Upham, Virus_ICTV)), n_subclin_diseased=sum(any_subclin), n_not_subclin_diseased=sum(any_subclin==0))
+# 10 bat-virus interactions showed signs of subclinical disease (56 did not) 
+# 10/(10+56)# 15%
+# 0 rodent-virus interactions showed signs of disease (83 did not)
+
+subclin_v_fam <- dat_subclin %>% group_by(family) %>% summarise(
+	n_subclinicallydiseased_bats=sum(any_subclin[Host_order=="Chiroptera"]), n_not_subclinicallydiseased_bats=sum(any_subclin[Host_order=="Chiroptera"]==0),
+	n_subclinicallydiseased_rats=sum(any_subclin[Host_order=="Rodentia"]), n_not_subclinicallydiseased_rats=sum(any_subclin[Host_order=="Rodentia"]==0))
+
+subclin_v_fam <- subclin_v_fam %>% group_by(family) %>% summarise(
+	bats_subclinicallydiseased=paste0(n_subclinicallydiseased_bats,"/",sum(n_subclinicallydiseased_bats,n_not_subclinicallydiseased_bats)),
+	rats_subclinicallydiseased=paste0(n_subclinicallydiseased_rats,"/",sum(n_subclinicallydiseased_rats,n_not_subclinicallydiseased_rats)))
+
+names(subclin_v_fam) <- c("Virus family", "Bats", "Rodents")
+
+latex <- print.xtable(xtable(subclin_v_fam, caption = "Proportions of host-virus pairs with subclinical disease across virus families and host order"), 
+						include.rownames=FALSE, print.results = FALSE)
+
+# writeLines(
+#   c(
+#     "\\documentclass[11pt]{article}",
+#     "\\begin{document}",
+#     "\\thispagestyle{empty}",
+#     latex,
+#     "\\end{document}"
+#   ),
+#   "../plots_tables/subclinicaldisease_by_virus_fam.tex"
+# )
+
+# tools::texi2pdf("../plots_tables/subclinicaldisease_by_virus_fam.tex", clean = TRUE)
+
+
+
+
+### COMBINED TABLE OF ANY DISEASE, CLINICAL DISEASE, AND SUB-CLINICAL DISEASE
+
+combo_tab <- cbind(patho_v_fam, clin_v_fam[2:3], subclin_v_fam[2:3])
+latex <- print.xtable(xtable(combo_tab, caption = "Proportions of host-virus pairs across disease reporting levels"), 
+						include.rownames=FALSE, print.results = FALSE)
+# writeLines(
+#   c(
+#     "\\documentclass[11pt]{article}",
+#     "\\begin{document}",
+#     "\\thispagestyle{empty}",
+#     latex,
+#     "\\end{document}"
+#   ),
+#   "../plots_tables/combo_disease_by_virus_fam.tex"
+# )
+
+
+
+#########################
 
 # which interactions were not susceptible:
 dat_suscep <- dat %>% group_by(Virus_ICTV, Host_Upham, Host_order) %>% summarise(suscep=any(as.logical(Susceptible_YN), na.rm=TRUE))
@@ -271,6 +541,7 @@ dat %>% filter(Susceptible_YN==1 & !is.na(severity_rank)) %>% select(family,  Pa
 				arrange(desc(n_individuals)) %>% select(n_individuals) %>% sum() #5622 total individuals
 
 
+
 # investigating reservoir data #
 virus_traits <- read.csv("../clean_data/Virus_traits.csv")
 
@@ -304,6 +575,18 @@ dat$Virus_ICTV[is.na(dat$Reservoir)] %>% sort() %>% unique()
 # setting viruses with no clear reservoir to be NA for Reservoir_match
 dat$Reservoir_match[dat$Reservoir %in% c("Orphan", "MULTIPLE")] <- NA
 
+dat$Reservoir[dat$Reservoir %in% c("Anseriformes", 
+										 	"Charadriiformes",
+											"Columbiformes",
+											"Galliformes",
+											"Passeriformes",
+											"Pelecaniformes",
+											"Suliformes")] <- "Aves"
+
+dat$Reservoir[dat$Reservoir %in% c("Human","NonHumanPrimate")] <- "Primates"
+dat$Reservoir[dat$Reservoir %in% c("Artiodactyl")] <- "Artiodactyla"
+dat$Reservoir[dat$Reservoir %in% c("Carnivore")] <- "Carnivora"
+
 
 # how many viruses with susceptible hosts and pathology data have reservoir information?
 dat_patho_res <- left_join(dat_patho, dat %>% select(Virus_ICTV, Reservoir))
@@ -335,6 +618,70 @@ chisq.test(dat_sm$Host_order, dat_sm$Reservoir_match, correct=FALSE)
 # p=0.02, therefore reject null - there is evidence of a relationship between variables
 # 35/(25+35)# 0.58
 # 24/(24+40)# 0.375
+
+
+### Reservoir match versus Host Evolutionary Isolation
+
+# adding host specificity data
+host_range <- read.csv("../clean_data/host_range_data.csv")
+
+dat_hr <- left_join(dat, host_range)
+
+dat_hr <- dat_hr %>% filter(Susceptible_YN==1, !is.na(severity_rank)) %>%
+			ungroup() %>% select(-PaperID) %>%
+			select(Host_order, Virus_ICTV, Host_Upham, Reservoir, Reservoir_match, 
+					ses_pd, EvoIso, mean_reservoir_dist) %>% unique() %>%
+			filter(!is.na(Reservoir_match)) %>% filter(!is.na(Reservoir))
+
+dat_hr_noRes <- dat_hr %>% select(-Reservoir) %>% unique()
+cor(dat_hr_noRes$Reservoir_match, dat_hr_noRes$EvoIso)# -0.55
+
+colours_BR <- c("#1B85BF", "#AB1808")
+
+rhei_bplot <- ggplot(dat_hr_noRes, aes(x=factor(Reservoir_match), y=EvoIso, color=Host_order)) + 
+				geom_boxplot(width=0.2, outlier.shape=NA) +
+				geom_jitter(width=0.2, alpha=0.3) + facet_grid(~Host_order) +
+				scale_color_manual(values=colours_BR) + theme_bw() +
+				theme(legend.position="none") +
+				xlab("Reservoir match") +
+				ylab("Host Evolutionary Isolation")
+
+rhei_bplot
+# ggsave("../plots_tables/HEI_by_ResMatch.pdf", width=6, height=3)
+
+
+
+rhei_res <- ggplot(dat_hr, aes(x=factor(Reservoir), y=EvoIso, color=Host_order, group=factor(Reservoir_match))) + 
+				geom_jitter(aes(shape=factor(Reservoir_match)), size=3, alpha=0.5, width=0.3) +
+				scale_color_manual(values=colours_BR) +
+				theme_bw() + 
+				theme(axis.text.x = element_text(angle = 45, hjust=1, size = 11, vjust=1)) +
+				labs(shape="Reservoir match", colour="Host order") +
+				xlab("Presumed reservoir") + 
+				ylab("Host Evolutionary Isolation")
+
+rhei_res
+# ggsave("../plots_tables/HEI_by_Reservoir.pdf", width=7, height=4)
+
+
+
+colours_YP <-c("#FFC20A","#800080")
+dat_hr_sm <- dat_hr %>% ungroup() %>% select(-Reservoir) %>% unique()
+
+rhei_hists <-  ggplot(dat_hr_sm, aes(x=EvoIso, fill=factor(Reservoir_match))) + 
+					geom_histogram(alpha=0.5, position="identity") +
+					facet_grid(Host_order~.) + 
+					scale_fill_manual(values=colours_YP) + 
+					theme_bw() + 
+					scale_y_continuous(expand = c(0, 0), limits=c(0,14)) + 
+					labs(fill="Reservoir match") + 
+					ylab("Number of unique host-virus interactions")	
+
+
+cor(dat_hr_sm$EvoIso, dat_hr_sm$Reservoir_match)
+cor(dat_hr_sm$EvoIso[dat_hr_sm$Host_order=="Chiroptera"], dat_hr_sm$Reservoir_match[dat_hr_sm$Host_order=="Chiroptera"])
+cor(dat_hr_sm$EvoIso[dat_hr_sm$Host_order=="Rodentia"], dat_hr_sm$Reservoir_match[dat_hr_sm$Host_order=="Rodentia"])
+
 
 
 
@@ -589,6 +936,9 @@ latex <- print.xtable(xtable(dat_hosttax), include.rownames=FALSE, print.results
 ## Host x Virus Heatmap ##
 ##########################
 
+
+# Maximum observed severity
+
 colours_BR <- c("#1B85BF", "#AB1808")
 
 
@@ -618,7 +968,7 @@ dat_patho <- dat_patho[dat_patho$PathologyReported_YN=="Y",]
 dat_patho <- dat_patho[!is.na(dat_patho$Virus_ICTV),]
 dat_patho <- dat_patho[!is.na(dat_patho$Host_Upham),]
 
-# updating this to filter out non-susceptible and studies where pathology was reported...
+# updating this to filter out non-susceptible and studies where pathology was not reported...
 com2 <- dat_patho %>% ungroup() %>%
 				filter(Susceptible_YN==1) %>%
 				filter(PathologyReported_YN=="Y") %>%
@@ -626,7 +976,9 @@ com2 <- dat_patho %>% ungroup() %>%
 				unique() %>% 
 				group_by(Virus_ICTV, Host_Upham, Host_order) %>%
 				summarise(n_individuals = as.numeric(sum(n_distinct(IndividualID, na.rm=TRUE) + sum(N_individuals, na.rm=TRUE))),
-							max_severity=max(severity_rank, na.rm=TRUE)) 
+							max_severity=max(severity_rank, na.rm=TRUE),
+							mean_severity=mean(severity_rank, na.rm=TRUE)) 
+
 
 sum(com2$n_individuals)
 
@@ -634,26 +986,75 @@ com2$Host_Upham <- gsub("_", " ", com2$Host_Upham)
 com2 <- data.frame(com2)
 com2$Virus_ICTV %>% unique() %>% sort()
 
-# shorten virus names except for ebolaviruses
-com2$Virus_ICTV <- gsub(" virus$", "", com2$Virus_ICTV)
-com2$Virus_ICTV[grep("Avian ortho",com2$Virus_ICTV)] <- "Newcastle Disease"
-com2$Virus_ICTV[grep("Middle East",com2$Virus_ICTV)] <- "MERS-related coronavirus"
-com2$Virus_ICTV[grep("Severe acute",com2$Virus_ICTV)] <- "SARS-related coronavirus"
-com2$Virus_ICTV[grep("ebolavirus", com2$Virus_ICTV, invert=T)] <- gsub(" [a-z]*virus$", "", com2$Virus_ICTV[grep("ebolavirus", com2$Virus_ICTV, invert=T)])
+# switch to ICTV virus names for plotting (not latin binomial names)
+com2$Virus_ICTV[grep("Avian ortho",com2$Virus_ICTV)] <- "Newcastle disease virus"
+com2$Virus_ICTV[grep("Middle East",com2$Virus_ICTV)] <- "MERS coronavirus"
+com2$Virus_ICTV[grep("Severe acute",com2$Virus_ICTV)] <- "SARS coronavirus"
+com2$Virus_ICTV <- gsub("Saint ", "St. ", com2$Virus_ICTV)
 com2$Virus_ICTV <- gsub("Venezuelan equine encephalitis", "VEE", com2$Virus_ICTV)
 com2$Virus_ICTV <- gsub("Western equine encephalitis", "WEE", com2$Virus_ICTV)
 com2$Virus_ICTV <- gsub("Eastern equine encephalitis", "EEE", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("aravan", "Aravan virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("australis", "Australian bat lyssavirus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("lagos", "Lagos bat virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("caucasicus", "West Caucasian bat virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("irkut", "Irkut virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("khujand", "Khujand virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("rabies", "Rabies virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("^Lyssavirus ", "", com2$Virus_ICTV)
+
+
+com2$Virus_ICTV <- gsub("ebolavirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("orthobunyavirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("vesiculovirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("coltivirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("orthohantavirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("henipavirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("marburgvirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("phlebovirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("mammarenavirus", "virus", com2$Virus_ICTV)
+com2$Virus_ICTV <- gsub("pararubulavirus", "virus", com2$Virus_ICTV)
+
 com2$Virus_ICTV <- gsub(" disease$", "", com2$Virus_ICTV)
 
-vtree$tip.label <- gsub(" virus$", "", vtree$tip.label)
-vtree$tip.label[grep("Avian ortho",vtree$tip.label)] <- "Newcastle Disease"
-vtree$tip.label[grep("Middle East",vtree$tip.label)] <- "MERS-related coronavirus"
-vtree$tip.label[grep("Severe acute",vtree$tip.label)] <- "SARS-related coronavirus"
-vtree$tip.label[grep("ebolavirus", vtree$tip.label, invert=T)] <- gsub(" [a-z]*virus$", "", vtree$tip.label[grep("ebolavirus", vtree$tip.label, invert=T)])
+# remove " virus" from end to save space other than SARS coronavirus
+com2$Virus_ICTV <- gsub(" virus$", "" , com2$Virus_ICTV)
+
+
+
+# switch to ICTV virus names for plotting (not latin binomial names)
+vtree$tip.label[grep("Avian ortho",vtree$tip.label)] <- "Newcastle disease virus"
+vtree$tip.label[grep("Middle East",vtree$tip.label)] <- "MERS coronavirus"
+vtree$tip.label[grep("Severe acute",vtree$tip.label)] <- "SARS coronavirus"
+vtree$tip.label <- gsub("Saint ", "St. ", vtree$tip.label)
 vtree$tip.label <- gsub("Venezuelan equine encephalitis", "VEE", vtree$tip.label)
 vtree$tip.label <- gsub("Western equine encephalitis", "WEE", vtree$tip.label)
 vtree$tip.label <- gsub("Eastern equine encephalitis", "EEE", vtree$tip.label)
+vtree$tip.label <- gsub("aravan", "Aravan virus", vtree$tip.label)
+vtree$tip.label <- gsub("australis", "Australian bat lyssavirus", vtree$tip.label)
+vtree$tip.label <- gsub("lagos", "Lagos bat virus", vtree$tip.label)
+vtree$tip.label <- gsub("caucasicus", "West Caucasian bat virus", vtree$tip.label)
+vtree$tip.label <- gsub("irkut", "Irkut virus", vtree$tip.label)
+vtree$tip.label <- gsub("khujand", "Khujand virus", vtree$tip.label)
+vtree$tip.label <- gsub("rabies", "Rabies virus", vtree$tip.label)
+vtree$tip.label <- gsub("^Lyssavirus ", "", vtree$tip.label)
+
+vtree$tip.label <- gsub("ebolavirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("orthobunyavirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("vesiculovirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("coltivirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("orthohantavirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("henipavirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("marburgvirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("phlebovirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("mammarenavirus", "virus", vtree$tip.label)
+vtree$tip.label <- gsub("pararubulavirus", "virus", vtree$tip.label)
+
 vtree$tip.label <- gsub(" disease$", "", vtree$tip.label)
+
+# remove " virus" from end to save space other than SARS coronavirus
+vtree$tip.label <- gsub(" virus$", "" , vtree$tip.label)
+
 
 # remove viruses not in data
 vtree <- drop.tip(vtree, setdiff(vtree$tip.label, com2$Virus_ICTV))
@@ -832,6 +1233,97 @@ b_imgs <- ggdraw() + draw_plot(b) + draw_image(bat, width=0.05, hjust = 0.05, vj
 b_imgs
 
 
-ggsave("../plots_tables/heatmap_severity_Nindividuals.pdf", b_imgs, width=13.75, height=17.5)
-ggsave("../plots_tables/heatmap_severity_Nindividuals.png", b_imgs, width=13.75, height=17.5, bg = "white")
+ggsave("../plots_tables/heatmap_severity_Nindividuals.pdf", b_imgs, width=14, height=18.25)
+
+
+
+
+
+## Average reported severity per host-virus pair
+
+plot_net <- ggplot(com2, aes(y = host, x = virus, fill = mean_severity)) +
+  geom_tile() +
+  theme_bw() +
+  scale_x_discrete(drop = FALSE) +
+  scale_y_discrete(drop = FALSE) +
+  scale_fill_viridis_c(option="B", name="Mean severity", 
+    					na.value = "grey", begin=0.15,
+    					end = 0.92, direction=-1,
+    					breaks=c(1,5,20,75,250)) +
+  labs(fill = "Mean severity") +
+  theme(
+    # axis.text.x = element_text(angle = 90, hjust = 1, size = 11, vjust=0.5),
+    # axis.text.y = element_text(size = 11),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    plot.margin = unit(c(0,0,0,0), "cm")) + geom_hline(yintercept=32.5, linetype=2, color="gray", linewidth=0.5)
+ plot_net
+
+h_net <- ggtree_host + plot_net + plot_layout(widths=c(1,3))
+# h_net
+
+legend_b <- cowplot::get_legend(
+  plot_net + 
+    theme(legend.direction = "horizontal") + 
+    guides(colour = guide_legend(title.position = "top"))
+    # guides(color = guide_legend(nrow = 2, title.position = "top")) +
+)
+
+h_net
+
+# first align the top-row plot (h_net) with the right-most plot of the
+# bottom row (ggtree_virus)
+plots <- cowplot::align_plots(h_net + theme(legend.position="none"), ggtree_virus +
+				xlim(90, 1), 
+						align = 'v', axis = 'r')
+
+# then build the bottom row
+bottom_row <- cowplot::plot_grid(legend_b, ggtree_virus, axis = 'r', rel_widths=c(1,3))
+
+# then combine with the top row for final plot
+a <- cowplot::plot_grid(plots[[1]], bottom_row, ncol = 1, rel_heights = c(4,0.85))
+a
+
+
+# re-aligning
+h_net_bp <- ggtree_host + plot_net + theme(legend.position="none") + bp + plot_layout(widths=c(1,3,0.4))
+h_net_bp
+
+# first align centre of the top-row plot (h_net) with the middle plot of the
+# bottom row (ggtree_virus)
+plots2 <- cowplot::align_plots(h_net_bp + theme(legend.position="none"), ggtree_virus +
+				xlim(90, 1), 
+						align = 'v', axis = 'r')
+
+
+# then build the bottom row
+bottom_row2 <- cowplot::plot_grid(legend_b, 
+									ggtree_virus, #+ theme(plot.margin=margin(t=-30)), 
+									NULL,  ncol=3, axis = 'l', rel_widths=c(1,3,0.4))
+				
+
+# then combine with the top row for final plot
+b <- cowplot::plot_grid(plots2[[1]], bottom_row2 + theme(plot.margin = unit(c(-0.37,0.05,1.0,0.00), "cm")), ncol = 1, rel_heights = c(4,0.8))
+b
+
+
+bat <- magick::image_read("../plots_tables/desmodus.png") %>%
+  # image_resize("570x380") %>%
+  magick::image_colorize(100, colours_BR[1]
+)
+rat <- magick::image_read("../plots_tables/rattus.png") %>%
+  # image_resize("570x380") %>%
+  magick::image_colorize(100, colours_BR[2])
+
+# b_imgs <- ggdraw() + draw_plot(b) + draw_image(bat, width=0.05, hjust = 0, vjust = 0.025) +
+# 						  draw_image(rat, width=0.04, hjust = -0.19, vjust = -0.48,)
+
+b_imgs <- ggdraw() + draw_plot(b) + draw_image(bat, width=0.05, hjust = 0.05, vjust = 0.24) +
+						  draw_image(rat, width=0.04, hjust = -0.0, vjust = -0.20,)
+b_imgs
+
+
+ggsave("../plots_tables/heatmap_mean_severity_Nindividuals.pdf", b_imgs, width=14, height=18.25)
 

@@ -7,10 +7,11 @@ output:
     highlight: default
     code_folding: hide
     toc: yes
-    toc_depth: 3
+    toc_depth: 4
     toc_float: true
-    collapsed: false
-    theme: yeti
+    collapsed: true
+    df-print: paged
+    theme: spacelab
 urlcolor: blue
 ---
 
@@ -241,343 +242,11 @@ dat <- left_join(dat, dat_symptoms_sm)
 dat <- dat[!is.na(dat$Host_order),]
 ```
 
+```{r scaling_plotting_functions, echo=F, eval=T}
 
-
-```{r scaling_plotting_functions, echo=F, message=F, warning=F}
-
-# Code for scale and unscale with mean=0 sd=0.5 (following Gelman 2008)
-scale_half <- function(x){
-  return( (x-mean(x, na.rm=TRUE)) * 0.5/sd(x, na.rm=TRUE))
-}
-
-unscale_half <- function(x,original){
-    x*sd(original, na.rm=TRUE)*2 + mean(original, na.rm=TRUE)  
-}
-
-
-cond_eff_plot <- function(model, ...){
-    
-    draws <- linpred_draws(
-                  model,
-                  newdata=model$data,
-                  value = ".linpred",
-                  ndraws = 4000,
-                  seed = NULL,
-                  re_formula = NULL,
-                  category = ".category",
-                  dpar = NULL) 
-    
-    ggplot(draws, aes(x=Host_order, y=.linpred, fill=Host_order)) + stat_eye(.width=c(0.95,0.8), alpha=0.7) + 
-          theme_bw() + scale_fill_manual(values=colours_BR) + ylab("Conditional log-odds") + xlab("Host order") + theme(  legend.position="none")
-}
-
-param_tab <- function(model, ...){
-  parameters::parameters(model, centrality="mean", ci=0.9, digits=2, diagnostic="Rhat", effects="all", test=NULL, verbose = FALSE) %>% insight::export_table(format = "markdown")
-}
-
-
-ar_theme <-   theme_bw() + 
-              theme(legend.position = "none",
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank(),
-              axis.text.y=element_text(size=rel(1.1)), axis.title=element_text(size=9))
-
-# intervals plot colors
-color_scheme_set("teal")
-
-
-joint_conditionals <- function(p1,p2,p3,global_ylim,padding){
-
-      plot_grid(
-      
-        p1 + 
-        global_ylim + 
-        padding + 
-        ylab("Conditional log-odds of Disease Presence") +
-        xlab("") +
-        theme_bw() + 
-        theme(legend.position = "none",
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank()),
-      
-        p2 +
-        global_ylim + 
-        padding + 
-        ylab("Conditional log-odds of Mortality") +
-        xlab("") +
-        theme_bw() + 
-        theme(legend.position = "none",
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank()),
-      
-        p3 +
-        global_ylim + 
-        padding + 
-        ylab("Conditional log-odds of Disease Severity") +
-        xlab("") +
-        theme_bw() + 
-        theme(legend.position = "none",
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank()),
-      
-                ncol=3, scale=0.90, 
-                labels = c('A)', 'B)', "C)"), 
-                label_size = 12, hjust=0.02,
-                # labels = c('Disease Presence', 'Mortality', "Severity"), 
-                align="hv"
-      
-               )
-}
-
-
-joint_conditionals_intervals <- function(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3){
-
-      egg::ggarrange(
-        (p1 + 
-        global_ylim + 
-        padding + 
-        ggtitle("A) Disease presence")+
-        ylab("Conditional log-odds") +
-        xlab("") +
-        theme_bw() + 
-        theme(legend.position = "none",
-              axis.title.y=element_text(size=12),
-              axis.text.x=element_text(size=12),
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank())),
-        
-        (p2 +
-        global_ylim + 
-        padding + 
-        ggtitle("B) Mortality")+
-        ylab("") +
-        xlab("") +
-        theme_bw() + 
-        theme(legend.position = "none",
-              axis.text.x=element_text(size=12),
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank())),
-      
-        (p3 +
-        global_ylim + 
-        padding + 
-        ggtitle("C) Severity")+
-        ylab("") +
-        xlab("") +
-        theme_bw() + 
-        theme(legend.position = "none",
-              axis.text.x=element_text(size=12),
-              panel.grid.major = element_blank(), 
-              panel.grid.minor = element_blank())),
-        
-        (ar1 + padding + theme(axis.text.y=element_text(size=12))), 
-        (ar2 + padding + theme(axis.text.y=element_blank())), 
-        (ar3 + padding + theme(axis.text.y=element_blank())),
-         ncol=3, padding=0.5)
-
-}
-
-# Intervals plot with relabelling
-
-labels <- c("b_Host_orderChiroptera" = "Host order (Chiroptera)", 
-            "b_n_individuals" = "Number of individuals",
-            "b_ses_pd" = "Host phylogenetic diversity", 
-            "b_EvoIso" = "Host evolutionary isolation",
-            "b_Dose_mass" = "Dose/g",
-            "b_Reservoir_match" = "Reservoir match")
-
-
-intervals_plot <- function(x, ...) {
-  ip <- mcmc_intervals(as.matrix(model), regex_pars = "b_[^I]", prob=0.8, prob_outer=0.95, point_est="mean", point_size = 3.5, outer_size=1, inner_size=3) +  ar_theme + xlab("Estimated effect size") 
-
-  ip <- ip + scale_y_discrete(labels = labels, limits=rev(ip$data$parameter))
-
-  return(ip)
-}
-
-
-
-
-get_intervals <- function(draws) {
-  bayesplot::mcmc_intervals_data(draws, prob=0.8, prob_outer=0.95, regex_pars = "b_[^I]")
-}
-
-compare_posteriors <- function(..., dodge_width = 0.7) {
-  dots <- rlang::dots_list(..., .named = TRUE)
-  draws <- lapply(dots, function(x) {
-    if (class(x)[1] == "stanreg") {
-        posterior::subset_draws(posterior::as_draws(x$stanfit),
-            variable = names(fixef(x))
-        )
-    } else if (class(x)[1] == "brmsfit") {
-        brm_draws <- posterior::subset_draws(posterior::as_draws(x$fit),
-            variable = paste0("b_", rownames(fixef(x)))
-        )
-    } else {
-        stop(paste0(class(x)[1], " objects not supported."))
-    }
-  })
-  intervals <- lapply(draws, get_intervals)
-  combined <- dplyr::bind_rows(intervals, .id = "model")
-
-  combined$model <- c(rep("Species-level", 4),rep("Individual-level", 4))
-  combined$model <- factor(combined$model, levels=c("Individual-level","Species-level"))
-  
-  ggplot(combined, aes(x = m, y = parameter, color = model, group = model)) +
-    geom_vline(xintercept = 0, color="lightgrey") +
-    geom_linerange(aes(xmin = l, xmax = h), size = 3, position = position_dodge(dodge_width)) +
-    geom_linerange(aes(xmin = ll, xmax = hh), position = position_dodge(dodge_width)) +
-    
-    geom_point(aes(color = model), fill="white", shape=21, size=3.5, position = position_dodge(dodge_width)) +
-    
-    geom_point(aes(color = model, fill=model), shape=21, size=3.5, position = position_dodge(dodge_width)) +
-    
-    scale_y_discrete(labels = labels, limits=rev(unique(as.character(combined$parameter)))) + 
-    
-    scale_color_manual(values=c("#e08214","#8073ac"), guide = guide_legend(reverse = TRUE)) +
-    
-    scale_fill_manual(values=alpha(c("#e08214","#8073ac"),0.5),guide = guide_legend(reverse = TRUE))+
-    
-    ar_theme + 
-    
-    labs(y="", x="Estimated effect size", col="", fill="")
-
-}
-
-# taxa-level hierarchical effects
-
-
-virus_hierarchical_effects <- function(re){
-
-      # extract and format hierarchical effects
-      re_virus <- re$Virus_ICTV+re$Virus_name
-      re_virus <- as.data.frame(re_virus)
-      re_virus$Virus <- row.names(re_virus)
-      
-      # clean up names
-      names(re_virus) <- gsub("[.]Intercept","",names(re_virus))
-      
-      # plot next to virus taxonomic tree
-      
-      # virus taxonomy
-      vtax <- read.csv("../clean_data/Virus_taxonomy.csv")
-      vtax <- as.data.frame(unclass(vtax), stringsAsFactors=TRUE)
-      
-      viruses <- read.csv("../raw_data/VirusNames_translation_Feb23_2024.csv")
-      viruses <- dplyr::left_join(viruses, vtax)
-      
-      # make tree
-      frm <- ~superkingdom/realm/kingdom/phylum/class/order/family/genus/Virus_ICTV
-      vtree <- as.phylo(frm, data = vtax, collapse=FALSE)
-      vtree$edge.length <- rep(1, nrow(vtree$edge))
-      
-      
-      # remove viruses with no susceptibe bat or rodent hosts
-      vtree <- drop.tip(vtree, setdiff(vtree$tip.label, re_virus$Virus))
-      
-      # reoder virus factors to match tree
-      re_virus$Virus <- factor(re_virus$Virus, levels=rev(vtree$tip.label))
-
-      # shorten names on taxonomy
-      vtree$tip.label <- gsub(" virus$", "", vtree$tip.label)
-      vtree$tip.label[grep("Avian ortho",vtree$tip.label)] <- "Newcastle Disease"
-      vtree$tip.label[grep("Middle East",vtree$tip.label)] <- "MERS-related coronavirus"
-      vtree$tip.label[grep("Severe acute",vtree$tip.label)] <- "SARS-related coronavirus"
-      vtree$tip.label[grep("ebolavirus", vtree$tip.label, invert=T)] <- gsub(" [a-z]*virus$", "", vtree$tip.label[grep("ebolavirus", vtree$tip.label, invert=T)])
-      vtree$tip.label <- gsub("Venezuelan equine encephalitis", "VEE", vtree$tip.label)
-      vtree$tip.label <- gsub("Western equine encephalitis", "WEE", vtree$tip.label)
-      vtree$tip.label <- gsub("Eastern equine encephalitis", "EEE", vtree$tip.label)
-      vtree$tip.label <- gsub(" disease$", "", vtree$tip.label)
-
-      v_re_plot <- ggplot(re_virus, aes(x=Estimate, y=Virus)) + 
-                    geom_linerange(aes(xmin=Q5, xmax=Q95), color="gray65", linewidth=0.9) + 
-                    geom_linerange(aes(xmin=Q25, xmax=Q75), color="gray45", linewidth=2.0) + 
-                    geom_point(aes(x=Estimate), size=2) + xlab("Estimated hierarchical effect") + 
-                    ylab(NULL) + theme_bw() + 
-                    theme(axis.text.y=element_blank(), axis.title=element_text(size=9),
-                        plot.margin = margin(t = 0,  # Top margi
-                                             r = 0.1,  # Right mrg
-                                             b = 0,  # Bottom magi
-                                             l = 0,  # Left marg
-                                             unit = "cm"))
-
-    v <- ggtree(ape::rotateConstr(vtree, rev(vtree$tip.label)), ladderize=FALSE) + 
-              geom_tiplab(offset=0.2, hjust=0, 
-                    align=F, as_ylab = F,
-                    geom = "text", size=3) + 
-              xlim_tree(8) +
-              xlim_expand(15, 1) +
-              # vexpand(.04, -1) +                   
-              theme( plot.margin = margin(t = 0.1,  # Top margin
-                                          r = 0,  # Right margin
-                                          b = 0,  # Bottom margin
-                                          l = 0,  # Left margin
-                                          unit = "cm"))
-
-    plot_grid(v, NULL, v_re_plot, nrow=1, rel_widths = c(0.8, -0.05, 1), align="h", scale=1.0)
-
-}
-
-
-host_hierarchical_effects <- function(re){
-
-    # extract and format hierarchical effects
-    re_host <- re$Host_Upham+re$Host_name
-    re_host <- as.data.frame(re_host)
-    re_host$Host <- row.names(re_host)
-    
-    # clean up names
-    names(re_host) <- gsub("[.]Intercept","",names(re_host))
-    
-    # plot next to virus taxonomic tree
-    
-    # remove hosts with no susceptibe bat or rodent hosts
-    htree <- drop.tip(tree, setdiff(tree$tip.label, re_host$Host))
-    
-    
-    # adding host order for coloring points
-    re_host <- left_join(re_host, dat %>% ungroup() %>% select(Host_Upham, Host_order) %>% rename(Host = Host_Upham)%>% unique())
-    
-    # reoder host factors to match tree
-    re_host$Host <- factor(re_host$Host, levels=rev(htree$tip.label))
-    
-    # remobe underscore in host names on tree
-    htree$tip.label <- gsub("_"," ", htree$tip.label)
-    
-    h_re_plot <-  ggplot(re_host, aes(x=Estimate, y=Host, color=Host_order)) + 
-                  geom_linerange(aes(xmin=Q5, xmax=Q95, color=Host_order), linewidth=0.9, alpha=0.25) + 
-                  geom_linerange(aes(xmin=Q25, xmax=Q75, color=Host_order), linewidth=2.0, alpha=0.50) + 
-                  geom_point(aes(x=Estimate), size=2) + 
-                  scale_colour_manual(values=colours_BR) + xlab("Estimated hierarchical effect") + ylab(NULL) + theme_bw() + 
-                  theme(legend.position = "none",
-                        axis.text.y=element_blank(), axis.title=element_text(size=10),
-                        plot.margin = margin(t = 0,  # Top margin
-                                             r = 0.1,  # Right margin
-                                             b = 0,  # Bottom margin
-                                             l = 0,  # Left margin
-                                             unit = "cm"))
-
-    h <- ggtree(ape::rotateConstr(htree, rev(htree$tip.label)), ladderize=FALSE) + 
-              geom_tiplab(offset=2, hjust=0, 
-                    align=F, as_ylab = F,
-                    geom = "text", size=3) + 
-              xlim_tree(10) +
-              xlim_expand(160, 1) +
-              # vexpand(.04, -1) +                   
-              theme( plot.margin = margin(t = 0.1,  # Top margin
-                                          r = 0,  # Right margin
-                                          b = 0,  # Bottom margin
-                                          l = 0,  # Left margin
-                                          unit = "cm"))
-
-
-    plot_grid(h, NULL, h_re_plot, nrow=1, rel_widths = c(0.8, -0.07, 1), align="h", scale=1.0)
-
-}
-
+source("./scaling_plotting_functions.R")
 
 ```
-
 
 # Priors
 
@@ -603,7 +272,7 @@ The default improper uniform prior used by brms is flat on the log-odds scale, s
 
 Priors for the family-level variance parameters:
 
-```{r prior_predict-sigma, echo=TRUE, eval=TRUE}
+```{r prior_predict_sigma, echo=TRUE, eval=TRUE}
 
 prior <- rstudent_t(n=10000, df=3, mu=0, sigma=10) # brms default
 prior <- prior[prior>0]
@@ -640,7 +309,6 @@ custom_prior <- c(prior(normal(0, 1), class = Intercept),
 spec <- dat
 spec <- spec[spec$Susceptible_YN==1,]
 spec <- spec[!is.na(spec$Susceptible_YN),]
-
 
 spec %>% group_by(PaperID, Virus_ICTV, Host_Upham, Host_order, Reservoir_match, ses_pd, EvoIso) %>% summarise(n_indivID=n_distinct(IndividualID), N_individuals=sum(unique(N_individuals), na.rm=TRUE)) %>% View()
 
@@ -701,7 +369,7 @@ model <- spec_disease_m0
 # summary(model, prob=0.9)
 
 # save memory
-# rm(spec_disease_m0)
+rm(spec_disease_m0)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -744,7 +412,7 @@ model <- spec_disease_m1
 # summary(model, prob=0.9)
 
 # save memory
-# rm(spec_disease_m1)
+rm(spec_disease_m1)
 
 param_tab(model)
 
@@ -937,7 +605,14 @@ model <- spec_disease_full
 rm(spec_disease_full)
 
 re <- ranef(model, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
-      
+
+level_order <-c("Host_Upham", "Host_name", "Virus_ICTV","Virus_name","PaperID")
+re_dis <- re_intercepts_plot(re, level_order = level_order)
+re_dis
+
+ggsave("../plots_tables/hierarchical_effects_spec_dis_all.pdf", re_dis, height=3.5, width=6)                    
+
+
 v <- virus_hierarchical_effects(re)
 v
 
@@ -958,6 +633,12 @@ model <- spec_mort_full
 rm(spec_mort_full)
 
 re <- ranef(model, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
+
+level_order <-c("Host_Upham", "Host_name", "Virus_ICTV","Virus_name","PaperID")
+re_mort <- re_intercepts_plot(re, level_order = level_order)
+re_mort
+
+ggsave("../plots_tables/hierarchical_effects_spec_mort_all.pdf", re_mort, height=3.5, width=6)                    
       
 v <- virus_hierarchical_effects(re)
 v
@@ -980,6 +661,12 @@ rm(spec_severity_full)
 
 re <- ranef(model, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
       
+level_order <-c("Host_Upham", "Host_name", "Virus_ICTV","Virus_name","PaperID")
+re_severity <- re_intercepts_plot(re, level_order = level_order)
+re_severity
+
+ggsave("../plots_tables/hierarchical_effects_spec_mort_all.pdf", re_severity, height=3.5, width=6)                    
+
 v <- virus_hierarchical_effects(re)
 v
 
@@ -992,10 +679,229 @@ ggsave("../plots_tables/hierarchical_effects_spec_severity_hosts.pdf", h, height
 ```
 
 
+### Joint hierarchical effects plot (species level full model)
 
-## Species level models (reservoir match)
+```{r joint_re_spec, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
 
-### Presence of disease (reservoir match)
+re_all_spec <- egg::ggarrange(
+        (re_dis + 
+        padding + 
+        ggtitle("A) Disease presence")+
+        ylab("Hierarchical predictors") +
+        xlab("") +
+        theme_bw() + 
+        theme(legend.position = "none",
+              axis.title.y=element_text(size=12),
+              axis.text.x=element_text(size=12),
+              panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank())),
+        
+        (re_mort +
+        padding + 
+        ggtitle("B) Mortality")+
+        ylab("") +
+        xlab("") +
+        theme_bw() + 
+        theme(legend.position = "none",
+              axis.text.x=element_text(size=12),
+              axis.text.y=element_blank(),
+              panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank())),
+      
+        (re_severity +
+        padding + 
+        ggtitle("C) Severity")+
+        ylab("") +
+        xlab("") +
+        theme_bw() + 
+        theme(legend.position = "none",
+              axis.text.x=element_text(size=12),
+              axis.text.y=element_blank(),
+              panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank())),
+        ncol=3, padding=0.5)
+
+ggsave("../plots_tables/hierarchical_effects_spec_all.pdf", re_all_spec, width=9, height=4)
+
+```
+
+
+
+## Species level models (reservoir match - no HEI)
+
+### Presence of disease (reservoir match - no HEI)
+
+```{r spec_disease_resMatch_alone, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
+
+if (!file.exists("../fit_models/spec_disease_resMatch_alone.rds")) {
+
+  spec_disease_resMatch_alone <- brm(Disease_YN ~ Host_order + 
+                      n_individuals +
+                      Reservoir_match +  
+                      ses_pd +
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.90, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_disease_resMatch_alone, "../fit_models/spec_disease_resMatch_alone.rds")
+
+} else { spec_disease_resMatch_alone <- readRDS("../fit_models/spec_disease_resMatch_alone.rds")}
+
+model <- spec_disease_resMatch_alone
+# summary(model, prob=0.9)
+
+# save memory
+rm(spec_disease_resMatch_alone)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_disease_resMatch_alone_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Mortality (reservoir match - no HEI)
+
+```{r spec_mort_resMatch_alone, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
+
+if (!file.exists("../fit_models/spec_mort_resMatch_alone.rds")) {
+
+  spec_mort_resMatch_alone <- brm(Mortality_YN ~ Host_order + 
+                      n_individuals +
+                      Reservoir_match + 
+                      ses_pd +
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.92, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_mort_resMatch_alone, "../fit_models/spec_mort_resMatch_alone.rds")
+
+} else { spec_mort_resMatch_alone <- readRDS("../fit_models/spec_mort_resMatch_alone.rds")}
+
+model <- spec_mort_resMatch_alone
+# summary(model, prob=0.90)
+
+# save memory
+rm(spec_mort_resMatch_alone)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_mortality_resMatch_alone_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+### Severity (reservoir match - no HEI)
+
+```{r spec_severity_resMatch_alone, echo=T, eval=T}
+
+if (!file.exists("../fit_models/spec_severity_resMatch_alone.rds")) {
+
+  spec_severity_resMatch_alone <- brm(severity_rank ~ Host_order + 
+                      n_individuals +
+                      Reservoir_match + 
+                      ses_pd +
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV),  
+    data=spec, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.97, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_severity_resMatch_alone, "../fit_models/spec_severity_resMatch_alone.rds")
+
+} else { spec_severity_resMatch_alone <- readRDS("../fit_models/spec_severity_resMatch_alone.rds")}
+
+model <- spec_severity_resMatch_alone
+# summary(model, prob=0.90)
+
+# save memory
+rm(spec_severity_resMatch_alone)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_severity_resMatch_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Joint results plots (species level reservoir match models - no HEI)
+
+```{r joint_conditionals_intervals_plot_resMatch_alone, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-12,12)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/species_level_conditionals_intervals_resMatch_alone.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+## Species level models (reservoir match - with HEI)
+
+
+### Presence of disease (reservoir match - with HEI)
 
 ```{r spec_disease_full_resMatch, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
 
@@ -1045,7 +951,8 @@ Sample size: `r nrow(model$data)`
 
 
 
-### Mortality (reservoir match)
+
+### Mortality (reservoir match - with HEI)
 
 ```{r spec_mort_full_resMatch, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
 
@@ -1093,7 +1000,7 @@ plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
 Sample size: `r nrow(model$data)`
 
 
-### Severity (reservoir match)
+### Severity (reservoir match - with HEI)
 
 ```{r spec_severity_full_resMatch, echo=T, eval=T}
 
@@ -1141,7 +1048,7 @@ Sample size: `r nrow(model$data)`
 
 
 
-### Joint results plots (species level reservoir match models)
+### Joint results plots (species level reservoir match models - with HEI)
 
 ```{r joint_conditionals_intervals_plot_resMatch, echo=T, eval=T, message=F, warning=F}
 
@@ -1155,6 +1062,341 @@ ggsave("../plots_tables/species_level_conditionals_intervals_resMatch.pdf", join
 
 ```
 Sample size: `r nrow(model$data)`
+
+
+
+
+### Presence of disease (reservoir match - with HEI and removing Lyssaviruses)
+
+```{r spec_disease_full_resMatch_nolys, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
+
+lyssaviruses <- viruses$Virus_ICTV[viruses$genus=="Lyssavirus"] %>% unique()
+spec_nolys <- spec[!spec$Virus_ICTV%in%lyssaviruses,]
+
+if (!file.exists("../fit_models/spec_disease_resMatch_nolys.rds")) {
+
+  spec_disease_resMatch_nolys <- brm(Disease_YN ~ Host_order + n_individuals + 
+                      Reservoir_match + ses_pd + EvoIso + 
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec_nolys, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.90, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_disease_resMatch_nolys, "../fit_models/spec_disease_resMatch_nolys.rds")
+
+} else { spec_disease_resMatch_nolys <- readRDS("../fit_models/spec_disease_resMatch_nolys.rds")}
+
+model <- spec_disease_resMatch_nolys
+# summary(model, prob=0.9)
+
+# save memory
+rm(spec_disease_resMatch_nolys)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/species_level_disease_resMatch_nolys_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Mortality (reservoir match - with HEI and removing lyssaviruses)
+
+```{r spec_mort_full_resMatch_nolys, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
+
+if (!file.exists("../fit_models/spec_mort_resMatch_nolys.rds")) {
+
+  spec_mort_resMatch_nolys <- brm(Mortality_YN ~ Host_order + n_individuals + 
+                      Reservoir_match + ses_pd + EvoIso + 
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec_nolys, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.90, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_mort_resMatch_nolys, "../fit_models/spec_mort_resMatch_nolys.rds")
+
+} else { spec_mort_resMatch_nolys <- readRDS("../fit_models/spec_mort_resMatch_nolys.rds")}
+
+model <- spec_mort_resMatch_nolys
+# summary(model, prob=0.90)
+
+# save memory
+rm(spec_mort_resMatch_nolys)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_mortality_resMatch_nolys_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+
+### Severity (reservoir match - with HEI and removing lyssaviruses)
+
+```{r spec_severity_full_resMatch_nolys, echo=T, eval=T}
+
+if (!file.exists("../fit_models/spec_severity_resMatch_nolys.rds")) {
+
+  spec_severity_resMatch_nolys <- brm(severity_rank ~ Host_order + n_individuals + 
+                      Reservoir_match + ses_pd + EvoIso + 
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV),  
+    data=spec_nolys, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_severity_resMatch_nolys, "../fit_models/spec_severity_resMatch_nolys.rds")
+
+} else { spec_severity_resMatch_nolys <- readRDS("../fit_models/spec_severity_resMatch_nolys.rds")}
+
+model <- spec_severity_resMatch_nolys
+# summary(model, prob=0.90)
+
+# save memory
+rm(spec_severity_resMatch_nolys)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_severity_resMatch_nolys_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Joint results plots (species level reservoir match models - with HEI and removing lyssaviruses)
+
+```{r joint_conditionals_intervals_plot_resMatch_nolys, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-12,12)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/species_level_conditionals_intervals_resMatch_nolys.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+## Species-level models (reservoir match x order interaction)
+
+
+### Presence of disease (reservoir match x order interaction)
+
+```{r spec_disease_resMatch_inter, echo=T, eval=T}
+
+if (!file.exists("../fit_models/spec_disease_resMatch_inter.rds")) {
+
+  disease_resMatch_inter <- brm(Disease_YN ~ Host_order * Reservoir_match + n_individuals +
+                      ses_pd + EvoIso + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_resMatch_inter, "../fit_models/spec_disease_resMatch_inter.rds")
+
+} else { disease_resMatch_inter <- readRDS("../fit_models/spec_disease_resMatch_inter.rds")}
+
+model <- disease_resMatch_inter
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_resMatch_inter)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+# source('./scaling_plotting_functions.R')
+
+# test <- plot_conditional_effects(model, "Conditional probabilty of disease presence")
+# test
+
+ggsave("../plots_tables/spec_disease_resMatch_inter_cond_effs.pdf", width=6.5, height=5)
+
+
+# ggsave("../plots_tables/spec_level_disease_resMatch_inter_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+### Mortality (reservoir match x order interaction)
+
+```{r spec_mortality_resMatch_inter, echo=T, eval=T}
+
+if (!file.exists("../fit_models/spec_mortality_resMatch_inter.rds")) {
+
+  mortality_resMatch_inter <- brm(Mortality_YN ~ Host_order * Reservoir_match + n_individuals +
+                      ses_pd + EvoIso +  
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mortality_resMatch_inter, "../fit_models/spec_mortality_resMatch_inter.rds")
+
+} else { mortality_resMatch_inter <- readRDS("../fit_models/spec_mortality_resMatch_inter.rds")}
+
+model <- mortality_resMatch_inter
+# summary(model, prob=0.9)
+
+# save memory
+rm(mortality_resMatch_inter)
+
+param_tab(model)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/spec_level_mortality_resMatch_inter_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Severity (reservoir match x order interaction)
+
+```{r spec_severity_resMatch_inter, echo=T, eval=T, message=F, warning=F}
+
+if (!file.exists("../fit_models/spec_severity_resMatch_inter.rds")) {
+
+  severity_resMatch_inter <- brm(severity_rank ~ Host_order * Reservoir_match + n_individuals +
+                      ses_pd + EvoIso +  
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.98, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_resMatch_inter, "../fit_models/spec_severity_resMatch_inter.rds")
+
+} else { severity_resMatch_inter <- readRDS("../fit_models/spec_severity_resMatch_inter.rds")}
+
+model <- severity_resMatch_inter
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_resMatch_inter)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/spec_level_severity_resMatch_inter_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Joint results plots (reservoir match x order interaction)
+
+```{r joint_conditionals_intervals_plot_spec_resMatch_inter, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-18,18)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/spec_level_conditionals_intervals_resMatch_inter.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+
 
 
 
@@ -1320,6 +1562,17 @@ ggsave("../plots_tables/species_level_conditionals_intervals_nolys.pdf", joint_p
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 ## Species level models (only heterologous hosts)
 
 ### Presence of disease (heterologous hosts)
@@ -1359,7 +1612,7 @@ rm(spec_disease_heteros)
 p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + ylab("Conditonal log-odds of disease") + 
       scale_x_discrete(limits = c("Chiroptera","Rodentia"))
 
-ar1 <- intervals_plot(ar1)
+ar1 <- intervals_plot(model)
 
 plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
 
@@ -1407,7 +1660,7 @@ param_tab(model)
 p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + ylab("Conditional log-odds of mortality") + 
       scale_x_discrete(limits = c("Chiroptera","Rodentia"))
 
-ar2 <- intervals_plot(ar2)
+ar2 <- intervals_plot(model)
 
 plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
 
@@ -1486,6 +1739,172 @@ Sample size: `r nrow(model$data)`
 
 
 
+## Species level models (only homologous hosts)
+
+### Presence of disease (homologous hosts)
+
+```{r spec_disease_homoHosts, echo=TRUE, eval=TRUE}
+
+spec_homos <- spec[spec$Reservoir_match%in%1,]
+
+if (!file.exists("../fit_models/spec_disease_homoHosts.rds")) {
+
+  spec_disease_homos <- brm(Disease_YN ~ Host_order + n_individuals + 
+                      ses_pd + EvoIso + 
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec_homos, family=bernoulli(link = "logit"),
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.90, max_treedepth=10), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_disease_homos, "../fit_models/spec_disease_homoHosts.rds")
+
+} else { spec_disease_homos <- readRDS("../fit_models/spec_disease_homoHosts.rds")}
+
+model <- spec_disease_homos
+# summary(model, prob=0.9)
+
+# # save memory
+rm(spec_disease_homos)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+# param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + ylab("Conditonal log-odds of disease") + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_disease_homoHosts_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Mortality (homologous hosts)
+
+```{r spec_mort_homoHosts, echo=TRUE, eval=TRUE}
+
+if (!file.exists("../fit_models/spec_mort_homoHosts.rds")) {
+
+  spec_mort_homos <- brm(Mortality_YN ~ Host_order + n_individuals +  
+                      ses_pd + EvoIso + 
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV), 
+    data=spec_homos, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.90, max_treedepth=10), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_mort_homos, "../fit_models/spec_mort_homoHosts.rds")
+
+} else { spec_mort_homos <- readRDS("../fit_models/spec_mort_homoHosts.rds")}
+
+model <- spec_mort_homos
+# summary(model, prob=0.9)
+
+# save memory
+rm(spec_mort_homos)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + ylab("Conditional log-odds of mortality") + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_mortality_homoHosts_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Severity (homologous hosts)
+
+```{r spec_severity_homoHosts, echo=T, eval=T}
+
+if (!file.exists("../fit_models/spec_severity_homoHosts.rds")) {
+
+  spec_severity_homos <- brm(severity_rank ~ Host_order + n_individuals +
+                      ses_pd + EvoIso + 
+                      (1|PaperID) + 
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV),  
+    data=spec_homos, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.92, max_treedepth=10), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(spec_severity_homos, "../fit_models/spec_severity_homoHosts.rds")
+
+} else { spec_severity_homos <- readRDS("../fit_models/spec_severity_homoHosts.rds")}
+
+# pairs(spec_severity_homos)
+model <- spec_severity_homos
+# summary(model, prob=0.9)
+
+# save memory
+rm(spec_severity_homos)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-10,12)) + ylab("Conditional log-odds of severity") + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/species_level_severity_homoHosts_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Joint results plots (homologous hosts)
+
+```{r joint_conditionals_intervals_plot_homoHosts, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-12,12)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/species_level_conditionals_intervals_homoHosts.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+
 #########################################
 #########################################
 #########################################
@@ -1502,7 +1921,10 @@ Sample size: `r nrow(model$data)`
 dat_dose <- dat
 dat_dose <- dat_dose[dat_dose$Susceptible_YN==1,]
 
+# response and predictor transformations
 dat_dose <- dat_dose %>% group_by(Dose_unit) %>% mutate(Dose_mass = log(Dose_mass))
+dat_dose <- dat_dose %>% group_by(Dose_unit) %>% mutate(Dose_amount = log(Dose_amount))
+dat_dose <- dat_dose %>% mutate(adult_mass_g = scale_half(log(adult_mass_g)))
 
 # hist(dat_dose$Dose_mass) # normal
 # ggplot(dat_dose, aes(Dose_mass, fill=Host_order)) + geom_histogram() + theme_bw()
@@ -1511,10 +1933,13 @@ dat_dose$Host_name <- dat_dose$Host_Upham
 dat_dose$Virus_name <- dat_dose$Virus_ICTV
 
 
+# modelling mass adjusted dose differences
+
 if (!file.exists("../fit_models/dose_model.rds")) {
 
   dose_m1 <- brm(Dose_mass ~ Host_order +
               (1|Dose_unit) +  (1|Route_type) + 
+              (1|PaperID) +
               (1|Host_name) + (1|Virus_name) +  
               (1|Host_Upham) + (1|Virus_ICTV), 
     data=dat_dose, family=gaussian(), 
@@ -1532,7 +1957,6 @@ model <- dose_m1
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Dose_mass, pp[1:500, ])
-# data has some unmodelled small peaks
 
 param_tab(model)
 
@@ -1544,7 +1968,87 @@ p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-8,20)) +
 ar1 <- intervals_plot(model)
 
 plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
-# ggsave("../plots_tables/dose_comboplot.pdf", width=8, height=3)
+ggsave("../plots_tables/dose_g_comboplot.pdf", width=8, height=3)
+
+
+# modelling daw dose differences
+
+plot(dat_dose$Dose_amount, dat_dose$adult_mass_g)
+
+if (!file.exists("../fit_models/dose_model_m2.rds")) {
+
+  dose_m2 <- brm(Dose_amount ~ Host_order + adult_mass_g +
+              (1|Dose_unit) +  (1|Route_type) + 
+              (1|Host_name) + (1|Virus_name) +  
+              (1|Host_Upham) + (1|Virus_ICTV), 
+    data=dat_dose, family=gaussian(), 
+    prior=custom_prior,
+    iter=6000, thin=1, 
+    cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.97, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(dose_m2, "../fit_models/dose_model_m2.rds")
+
+} else { dose_m2 <- readRDS("../fit_models/dose_model_m2.rds")}
+
+model <- dose_m2
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Dose_amount, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-8,20)) + 
+      ylab("Conditional log(dose)") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+ggsave("../plots_tables/dose_amount_comboplot.pdf", width=8, height=3)
+
+
+# modelling daw dose differences - no body mass included
+
+if (!file.exists("../fit_models/dose_model_m3.rds")) {
+
+  dose_m3 <- brm(Dose_amount ~ Host_order + 
+              (1|Dose_unit) +  (1|Route_type) + 
+              (1|PaperID) + 
+              (1|Host_name) + (1|Virus_name) +  
+              (1|Host_Upham) + (1|Virus_ICTV), 
+    data=dat_dose, family=gaussian(), 
+    prior=custom_prior,
+    iter=6000, thin=1, 
+    cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.97, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(dose_m3, "../fit_models/dose_model_m3.rds")
+
+} else { dose_m3 <- readRDS("../fit_models/dose_model_m3.rds")}
+
+model <- dose_m3
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Dose_amount, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-8,20)) + 
+      ylab("Conditional log(dose)") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/dose_amount_nomass_comboplot.pdf", width=8, height=3)
+
+
+
 
 ```
 
@@ -1564,8 +2068,10 @@ dat_dis <- dat_dis[!is.na(dat_dis$Disease_YN),]
 
 dat_dis$ses_pd <- scale_half(dat_dis$ses_pd)
 dat_dis$EvoIso <- scale_half(dat_dis$EvoIso)
+dat_dis$adult_mass_g <- scale_half(log(dat_dis$adult_mass_g))
 
 dat_dis <- dat_dis %>% group_by(Dose_unit) %>% mutate(Dose_mass = scale_half(log(Dose_mass)))
+dat_dis <- dat_dis %>% group_by(Dose_unit) %>% mutate(Dose_amount = scale_half(log(Dose_amount)))
 
 dat_dis$Host_name <- dat_dis$Host_Upham
 dat_dis$Virus_name <- dat_dis$Virus_ICTV
@@ -1579,7 +2085,8 @@ dat_dis$Virus_name <- dat_dis$Virus_ICTV
 
 if (!file.exists("../fit_models/indiv_disease_base.rds")) {
 
-  disease_m0 <- brm(Disease_YN ~ Host_order, 
+  disease_m0 <- brm(Disease_YN ~ Host_order + 
+                      (1|PaperID), 
     data=dat_dis, family=bernoulli(link = "logit"), 
     prior=c(prior(normal(0, 1), class = Intercept),
                   prior(normal(0, 1.5), class = b)),
@@ -1595,7 +2102,7 @@ model <- disease_m0
 # summary(model, prob=0.9)
 
 # save memory
-# rm(disease_m0)
+rm(disease_m0)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -1618,13 +2125,15 @@ With no hierarchical effects and only the bat / rodent binary predictor, the mod
 However, once include hierarchical effects for host and virus species, this effect goes away:
 
 
+
 ### Presence of disease - base model + phylogenetic effects
 
 ```{r indiv_disease_base_phylo, echo=TRUE, eval=TRUE}
 
 if (!file.exists("../fit_models/indiv_disease_base_phylo.rds")) {
 
-  disease_m1 <- brm(Disease_YN ~ Host_order +
+  disease_m1 <- brm(Disease_YN ~ Host_order + 
+                    (1|PaperID) +
                     (1|Host_name) + (1|Virus_name) +
                     (1|Host_Upham) + (1|Virus_ICTV), 
     data=dat_dis, family=bernoulli(link = "logit"), 
@@ -1641,7 +2150,7 @@ model <- disease_m1
 # summary(model, prob=0.9)
 
 # save memory
-# rm(disease_m1)
+rm(disease_m1)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -1667,7 +2176,7 @@ Sample size: `r nrow(model$data)`
 
 ### Presence of disease - Full model 
 
-Full model adjusts for evolutionary predictors, dose, and inoculation route
+Full model adjusts for evolutionary predictors, dose/g, and inoculation route
 
 ```{r indiv_disease_full, echo=T, eval=T}
 
@@ -1675,7 +2184,8 @@ if (!file.exists("../fit_models/indiv_disease_full.rds")) {
 
   disease_full <- brm(Disease_YN ~ Host_order + 
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +   
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -1693,7 +2203,7 @@ model <- disease_full
 # summary(model, prob=0.9)
 
 # save memory
-# rm(disease_full)
+rm(disease_full)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -1718,7 +2228,8 @@ Sample size: `r nrow(model$data)`
 
 
 
-## Mortality full model
+
+## Mortality - Full model
 
 ```{r mort_data_setup, eval=T, echo=T}
 
@@ -1730,8 +2241,10 @@ dat_mort <- dat_mort[!is.na(dat_mort$Mortality_YN),]
 
 dat_mort$ses_pd <- scale_half(dat_mort$ses_pd)
 dat_mort$EvoIso <- scale_half(dat_mort$EvoIso)
+dat_mort$adult_mass_g <- scale_half(log(dat_mort$adult_mass_g))
 
 dat_mort <- dat_mort %>% group_by(Dose_unit) %>% mutate(Dose_mass = scale_half(log(Dose_mass)))
+dat_mort <- dat_mort %>% group_by(Dose_unit) %>% mutate(Dose_amount = scale_half(log(Dose_amount)))
 
 dat_mort$Host_name <- dat_mort$Host_Upham
 dat_mort$Virus_name <- dat_mort$Virus_ICTV
@@ -1746,7 +2259,8 @@ if (!file.exists("../fit_models/indiv_mort_full.rds")) {
 
   mort_full <- brm(Mortality_YN ~ Host_order +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -1765,7 +2279,7 @@ model <- mort_full
 # summary(model, prob=0.9)
 
 # save memory
-# rm(mort_full)
+rm(mort_full)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -1790,7 +2304,7 @@ Sample size: `r nrow(model$data)`
 
 
 
-## Severity full model
+## Severity - Full model
 
 Fitting an ordinal regression (a.k.a. cumulative link) model for disease severity
 
@@ -1804,8 +2318,10 @@ dat_severity <- dat_severity[!is.na(dat_severity$severity_rank),]
 
 dat_severity$ses_pd <- scale_half(dat_severity$ses_pd)
 dat_severity$EvoIso <- scale_half(dat_severity$EvoIso)
+dat_severity$adult_mass_g <- scale_half(log(dat_severity$adult_mass_g))
 
 dat_severity <- dat_severity %>% group_by(Dose_unit) %>% mutate(Dose_mass = scale_half(log(Dose_mass)))
+dat_severity <- dat_severity %>% group_by(Dose_unit) %>% mutate(Dose_amount = scale_half(log(Dose_amount)))
 
 dat_severity$Host_name <- dat_severity$Host_Upham
 dat_severity$Virus_name <- dat_severity$Virus_ICTV
@@ -1820,7 +2336,8 @@ if (!file.exists("../fit_models/indiv_severity_full.rds")) {
 
   severity_full <- brm(severity_rank ~ Host_order + 
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -1838,10 +2355,10 @@ model <- severity_full
 # summary(model, prob=0.9)
 
 # save memory
-# rm(severity_full)
+rm(severity_full)
 
 # pp <- brms::posterior_predict(model)
-# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
 
 param_tab(model)
 
@@ -1882,10 +2399,16 @@ ggsave("../plots_tables/individual_level_conditionals_intervals_full.pdf", joint
 ### Individual level presence of disease full model
 ```{r hierarchial_effects_plot_indiv_dis, echo=F, eval=T, warning=F, message=F}
 
-model <- disease_full
-# rm(disease_full)
+model <- readRDS("../fit_models/indiv_disease_full.rds")
 
 re <- ranef(model, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
+
+level_order <-c("Host_Upham", "Host_name", "Virus_ICTV","Virus_name","Route_type","Dose_unit","PaperID")
+
+re_dis <- re_intercepts_plot(re, level_order = level_order)
+re_dis
+
+ggsave("../plots_tables/hierarchical_effects_indiv_dis_all.pdf", re_dis, height=3.5, width=6)                    
       
 v <- virus_hierarchical_effects(re)
 v
@@ -1898,10 +2421,17 @@ ggsave("../plots_tables/hierarchical_effects_indiv_dis_hosts.pdf", h, height=11,
 ### Individual level mortality full model
 ```{r hierarchial_effects_plot_indiv_mort, echo=F, eval=T, warning=F, message=F}
 
-model <- mort_full
-# rm(mort_full)
+model <- readRDS("../fit_models/indiv_mort_full.rds")
 
 re <- ranef(model, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
+
+level_order <-c("Host_Upham", "Host_name", "Virus_ICTV","Virus_name","Route_type","Dose_unit", "PaperID")
+
+re_mort <- re_intercepts_plot(re, level_order = level_order)
+re_mort
+
+ggsave("../plots_tables/hierarchical_effects_indiv_mort_all.pdf", re_mort, height=3.5, width=6)                    
+
       
 v <- virus_hierarchical_effects(re)
 v
@@ -1915,10 +2445,17 @@ ggsave("../plots_tables/hierarchical_effects_indiv_mort_hosts.pdf", h, height=11
 ### Individual level severity full model
 ```{r hierarchial_effects_plot_indiv_severity, echo=F, eval=T, warning=F, message=F}
 
-model <- severity_full
-# rm(severity_full)
+model <- readRDS("../fit_models/indiv_severity_full.rds")
 
 re <- ranef(model, probs=c(0.05, 0.25, 0.5, 0.75, 0.95))
+
+level_order <-c("Host_Upham", "Host_name", "Virus_ICTV","Virus_name","Route_type","Dose_unit", "PaperID")
+
+re_severity <- re_intercepts_plot(re, level_order = level_order)
+re_severity
+
+ggsave("../plots_tables/hierarchical_effects_indiv_severity_all.pdf", re_severity, height=3.5, width=6)                    
+
       
 v <- virus_hierarchical_effects(re)
 v
@@ -1927,13 +2464,238 @@ h <- host_hierarchical_effects(re)
 h
 ggsave("../plots_tables/hierarchical_effects_indiv_severity_hosts.pdf", h, height=11, width=8)                    
 ```
+          
+
+### Joint hierarchical effects plot (individual level full model)
+
+```{r joint_re_indiv, echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE}
+
+re_all_indiv <-  egg::ggarrange(
+        (re_dis + 
+        padding + 
+        ggtitle("A) Disease presence")+
+        ylab("Hierarchical predictors") +
+        xlab("") +
+        theme_bw() + 
+        theme(legend.position = "none",
+              axis.title.y=element_text(size=12),
+              axis.text.x=element_text(size=12),
+              panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank())),
+        
+        (re_mort +
+        padding + 
+        ggtitle("B) Mortality")+
+        ylab("") +
+        xlab("") +
+        theme_bw() + 
+        theme(legend.position = "none",
+              axis.text.x=element_text(size=12),
+              axis.text.y=element_blank(),
+              panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank())),
+      
+        (re_severity +
+        padding + 
+        ggtitle("C) Severity")+
+        ylab("") +
+        xlab("") +
+        theme_bw() + 
+        theme(legend.position = "none",
+              axis.text.x=element_text(size=12),
+              axis.text.y=element_blank(),
+              panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank())),
+        ncol=3, padding=0.5)
+
+
+ggsave("../plots_tables/hierarchical_effects_indiv_all.pdf", re_all_indiv, width=9, height=4)
+
+```
 
 
 
 
-## Individual level models (reservoir match)
 
-### Presence of disease (reservoir match)
+## Individual level models (reservoir match - no HEI)
+
+
+### Presence of disease (reservoir match - no HEI)
+
+```{r indiv_disease_resMatch_alone, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_disease_resMatch_alone.rds")) {
+
+  disease_resMatch_alone <- brm(Disease_YN ~ Host_order + 
+                      Reservoir_match +
+                      ses_pd +
+                      Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_resMatch_alone, "../fit_models/indiv_disease_resMatch_alone.rds")
+
+} else { disease_resMatch_alone <- readRDS("../fit_models/indiv_disease_resMatch_alone.rds")}
+
+model <- disease_resMatch_alone
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_resMatch_alone)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_disease_resMatch_alone_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+
+### Mortality (reservoir match - no HEI)
+
+```{r indiv_mortality_resMatch_alone, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_mortality_resMatch_alone.rds")) {
+
+  mortality_resMatch_alone <- brm(Mortality_YN ~ Host_order + 
+                      Reservoir_match +
+                      ses_pd +
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.96, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mortality_resMatch_alone, "../fit_models/indiv_mortality_resMatch_alone.rds")
+
+} else { mortality_resMatch_alone <- readRDS("../fit_models/indiv_mortality_resMatch_alone.rds")}
+
+model <- mortality_resMatch_alone
+# summary(model, prob=0.9)
+
+# save memory
+rm(mortality_resMatch_alone)
+
+param_tab(model)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_mortality_resMatch_alone_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Severity (reservoir match - no HEI)
+
+```{r indiv_severity_resMatch_alone, echo=T, eval=T, message=F, warning=F}
+
+if (!file.exists("../fit_models/indiv_severity_resMatch_alone.rds")) {
+
+  severity_resMatch_alone <- brm(severity_rank ~ Host_order + 
+                      Reservoir_match +
+                      ses_pd +
+                      Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.98, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_resMatch_alone, "../fit_models/indiv_severity_resMatch_alone.rds")
+
+} else { severity_resMatch_alone <- readRDS("../fit_models/indiv_severity_resMatch_alone.rds")}
+
+model <- severity_resMatch_alone
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_resMatch_alone)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_severity_resMatch_alone_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Joint results plots (reservoir match - no HEI)
+
+```{r joint_conditionals_intervals_plot_indiv_resMatch_alone, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-18,18)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_resMatch_alone.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+
+## Individual level models (reservoir match - with HEI)
+
+
+### Presence of disease (reservoir match - with HEI)
 
 ```{r indiv_disease_resMatch, echo=T, eval=T}
 
@@ -1941,7 +2703,8 @@ if (!file.exists("../fit_models/indiv_disease_resMatch.rds")) {
 
   disease_resMatch <- brm(Disease_YN ~ Host_order + Reservoir_match +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -1959,7 +2722,7 @@ model <- disease_resMatch
 # summary(model, prob=0.9)
 
 # save memory
-# rm(disease_resMatch)
+rm(disease_resMatch)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -1983,7 +2746,7 @@ plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
 Sample size: `r nrow(model$data)`
 
 
-### Mortality (reservoir match)
+### Mortality (reservoir match - with HEI)
 
 ```{r indiv_mortality_resMatch, echo=T, eval=T}
 
@@ -1991,7 +2754,8 @@ if (!file.exists("../fit_models/indiv_mortality_resMatch.rds")) {
 
   mortality_resMatch <- brm(Mortality_YN ~ Host_order + Reservoir_match +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2009,7 +2773,7 @@ model <- mortality_resMatch
 # summary(model, prob=0.9)
 
 # save memory
-# rm(mortality_resMatch)
+rm(mortality_resMatch)
 
 param_tab(model)
 
@@ -2033,7 +2797,7 @@ Sample size: `r nrow(model$data)`
 
 
 
-### Severity (reservoir match)
+### Severity (reservoir match - with HEI)
 
 ```{r indiv_severity_resMatch, echo=T, eval=T, message=F, warning=F}
 
@@ -2041,7 +2805,8 @@ if (!file.exists("../fit_models/indiv_severity_resMatch.rds")) {
 
   severity_resMatch <- brm(severity_rank ~ Host_order + Reservoir_match +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2059,7 +2824,7 @@ model <- severity_resMatch
 # summary(model, prob=0.9)
 
 # save memory
-# rm(severity_resMatch)
+rm(severity_resMatch)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
@@ -2083,7 +2848,7 @@ Sample size: `r nrow(model$data)`
 
 
 
-### Joint results plots (reservoir match)
+### Joint results plots (reservoir match - with HEI)
 
 ```{r joint_conditionals_intervals_plot_indiv_resMatch, echo=T, eval=T, message=F, warning=F}
 
@@ -2096,6 +2861,356 @@ joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,
 ggsave("../plots_tables/individual_level_conditionals_intervals_resMatch.pdf", joint_plot, width=10.5, height=5.5)
 
 ```
+
+
+## Individual level models (reservoir match x order interaction)
+
+
+### Presence of disease (reservoir match x order interaction)
+
+```{r indiv_disease_resMatch_inter, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_disease_resMatch_inter.rds")) {
+
+  disease_resMatch_inter <- brm(Disease_YN ~ Host_order * Reservoir_match +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_resMatch_inter, "../fit_models/indiv_disease_resMatch_inter.rds")
+
+} else { disease_resMatch_inter <- readRDS("../fit_models/indiv_disease_resMatch_inter.rds")}
+
+model <- disease_resMatch_inter
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_resMatch_inter)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+# source('./scaling_plotting_functions.R')
+
+# test <- plot_conditional_effects(model, "Conditional probabilty of disease presence")
+# test
+
+ggsave("../plots_tables/disease_resMatch_inter_cond_effs.pdf", width=6.5, height=5)
+
+
+# ggsave("../plots_tables/individual_level_disease_resMatch_inter_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+### Mortality (reservoir match x order interaction)
+
+```{r indiv_mortality_resMatch_inter, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_mortality_resMatch_inter.rds")) {
+
+  mortality_resMatch_inter <- brm(Mortality_YN ~ Host_order * Reservoir_match +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mortality_resMatch_inter, "../fit_models/indiv_mortality_resMatch_inter.rds")
+
+} else { mortality_resMatch_inter <- readRDS("../fit_models/indiv_mortality_resMatch_inter.rds")}
+
+model <- mortality_resMatch_inter
+# summary(model, prob=0.9)
+
+# save memory
+rm(mortality_resMatch_inter)
+
+param_tab(model)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_mortality_resMatch_inter_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Severity (reservoir match x order interaction)
+
+```{r indiv_severity_resMatch_inter, echo=T, eval=T, message=F, warning=F}
+
+if (!file.exists("../fit_models/indiv_severity_resMatch_inter.rds")) {
+
+  severity_resMatch_inter <- brm(severity_rank ~ Host_order * Reservoir_match +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.98, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_resMatch_inter, "../fit_models/indiv_severity_resMatch_inter.rds")
+
+} else { severity_resMatch_inter <- readRDS("../fit_models/indiv_severity_resMatch_inter.rds")}
+
+model <- severity_resMatch_inter
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_resMatch_inter)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_severity_resMatch_inter_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Joint results plots (reservoir match x order interaction)
+
+```{r joint_conditionals_intervals_plot_indiv_resMatch_inter, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-18,18)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_resMatch_inter.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+## Individual level models (reservoir match - with HEI and removing lyssaviruses)
+
+### Presence of disease (reservoir match - with HEI and removing lyssaviruses)
+
+```{r indiv_disease_resMatch_nolys, echo=T, eval=T}
+
+lyssaviruses <- viruses$Virus_ICTV[viruses$genus=="Lyssavirus"] %>% unique()
+dat_dis_nolys <- dat_dis[!dat_dis$Virus_ICTV%in%lyssaviruses,]
+
+if (!file.exists("../fit_models/indiv_disease_resMatch_nolys.rds")) {
+
+  disease_resMatch_nolys <- brm(Disease_YN ~ Host_order + Reservoir_match +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis_nolys, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.97, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_resMatch_nolys, "../fit_models/indiv_disease_resMatch_nolys.rds")
+
+} else { disease_resMatch_nolys <- readRDS("../fit_models/indiv_disease_resMatch_nolys.rds")}
+
+model <- disease_resMatch_nolys
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_resMatch_nolys)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_disease_resMatch_nolys_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+
+### Mortality (reservoir match - with HEI and removing lyssaviruses)
+
+```{r indiv_mortality_resMatch_nolys, echo=T, eval=T}
+
+lyssaviruses <- viruses$Virus_ICTV[viruses$genus=="Lyssavirus"] %>% unique()
+dat_mort_nolys <- dat_mort[!dat_mort$Virus_ICTV%in%lyssaviruses,]
+
+if (!file.exists("../fit_models/indiv_mortality_resMatch_nolys.rds")) {
+
+  mortality_resMatch_nolys <- brm(Mortality_YN ~ Host_order + Reservoir_match +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort_nolys, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.97, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mortality_resMatch_nolys, "../fit_models/indiv_mortality_resMatch_nolys.rds")
+
+} else { mortality_resMatch_nolys <- readRDS("../fit_models/indiv_mortality_resMatch_nolys.rds")}
+
+model <- mortality_resMatch_nolys
+# summary(model, prob=0.9)
+
+# save memory
+rm(mortality_resMatch_nolys)
+
+param_tab(model)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,10)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_mortality_resMatch_nolys_comboplot.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Severity (reservoir match - with HEI and removing lyssaviruses)
+
+```{r indiv_severity_resMatch_nolys, echo=T, eval=T, message=F, warning=F}
+
+lyssaviruses <- viruses$Virus_ICTV[viruses$genus=="Lyssavirus"] %>% unique()
+dat_severity_nolys <- dat_severity[!dat_severity$Virus_ICTV%in%lyssaviruses,]
+
+if (!file.exists("../fit_models/indiv_severity_resMatch_nolys.rds")) {
+
+  severity_resMatch_nolys <- brm(severity_rank ~ Host_order + Reservoir_match +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity_nolys, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.98, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_resMatch_nolys, "../fit_models/indiv_severity_resMatch_nolys.rds")
+
+
+} else { severity_resMatch_nolys <- readRDS("../fit_models/indiv_severity_resMatch_nolys.rds")}
+
+model <- severity_resMatch_nolys
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_resMatch_nolys)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_severity_resMatch_nolys_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Joint results plots (reservoir match - with HEI and removing lyssaviruses)
+
+```{r joint_conditionals_intervals_plot_indiv_resMatch_nolys, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-18,18)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_resMatch_nolys.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
 
 
 
@@ -2113,7 +3228,8 @@ if (!file.exists("../fit_models/indiv_disease_nolys.rds")) {
 
   disease_nolys <- brm(Disease_YN ~ Host_order + 
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2131,7 +3247,7 @@ model <- disease_nolys
 # summary(model, prob=0.9)
 
 # save memory
-# rm(disease_nolys)
+rm(disease_nolys)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -2165,7 +3281,8 @@ if (!file.exists("../fit_models/indiv_mort_nolys.rds")) {
 
   mort_nolys <- brm(Mortality_YN ~ Host_order + 
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2183,7 +3300,7 @@ model <- mort_nolys
 # summary(model, prob=0.9)
 
 # save memory
-# rm(mort_nolys)
+rm(mort_nolys)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -2217,7 +3334,8 @@ if (!file.exists("../fit_models/indiv_severity_nolys.rds")) {
 
   severity_nolys <- brm(severity_rank ~ Host_order + 
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2235,7 +3353,7 @@ model <- severity_nolys
 # summary(model, prob=0.9)
 
 # save memory
-# rm(severity_nolys)
+rm(severity_nolys)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -2287,7 +3405,8 @@ if (!file.exists("../fit_models/indiv_disease_heteroHosts.rds")) {
 
   disease_heteros <- brm(Disease_YN ~ Host_order +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2305,7 +3424,7 @@ model <- disease_heteros
 # summary(model, prob=0.9)
 
 # save memory
-# rm(disease_heteros)
+rm(disease_heteros)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -2338,7 +3457,8 @@ if (!file.exists("../fit_models/indiv_mort_heteroHosts.rds")) {
 
   mort_heteros <- brm(Mortality_YN ~ Host_order  +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2357,7 +3477,7 @@ model <- mort_heteros
 # summary(model, prob=0.9)
 
 # save memory
-# rm(mort_heteros)
+rm(mort_heteros)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -2392,7 +3512,8 @@ if (!file.exists("../fit_models/indiv_severity_heteroHosts.rds")) {
 
   severity_heteros <- brm(severity_rank ~ Host_order  +
                       ses_pd + EvoIso +  
-                       Dose_mass + (1|Dose_unit) +    
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
                       (1|Host_name) + (1|Virus_name) +
                       (1|Host_Upham) + (1|Virus_ICTV) + 
                       (1|Route_type), 
@@ -2410,7 +3531,7 @@ model <- severity_heteros
 # summary(model, prob=0.9)
 
 # save memory
-# rm(severity_heteros)
+rm(severity_heteros)
 
 # pp <- brms::posterior_predict(model)
 # ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
@@ -2449,6 +3570,188 @@ ggsave("../plots_tables/individual_level_conditionals_intervals_heteroHosts.pdf"
 ```
 
 
+
+
+## Individual level models (only homologous hosts)
+
+### Presence of disease (homologous hosts)
+
+```{r indiv_disaese_homos, echo=T, eval=T}
+
+dat_dis_homos <- dat_dis[dat_dis$Reservoir_match%in%1,]
+
+if (!file.exists("../fit_models/indiv_disease_homoHosts.rds")) {
+
+  disease_homos <- brm(Disease_YN ~ Host_order +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis_homos, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_homos, "../fit_models/indiv_disease_homoHosts.rds")
+
+} else { disease_homos <- readRDS("../fit_models/indiv_disease_homoHosts.rds")}
+
+model <- disease_homos
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_homos)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,12)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10)) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_disease_homoHosts_comboplot.pdf", width=8, height=3)
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+### Mortality (homologous hosts)
+
+```{r indiv_mortality_homos, echo=T, eval=T}
+
+dat_mort_homos <- dat_mort[dat_mort$Reservoir_match%in%1,]
+
+if (!file.exists("../fit_models/indiv_mort_homoHosts.rds")) {
+
+  mort_homos <- brm(Mortality_YN ~ Host_order  +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort_homos, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, 
+    cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mort_homos, "../fit_models/indiv_mort_homoHosts.rds")
+
+} else { mort_homos <- readRDS("../fit_models/indiv_mort_homoHosts.rds")}
+
+model <- mort_homos
+# summary(model, prob=0.9)
+
+# save memory
+rm(mort_homos)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-18,12)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_mortality_homoHosts_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Severity (homologous hosts)
+
+```{r indiv_severity_homos, echo=T, eval=T}
+
+dat_severity_homos <- dat_severity[dat_severity$Reservoir_match%in%1,]
+
+if (!file.exists("../fit_models/indiv_severity_homoHosts.rds")) {
+
+  severity_homos <- brm(severity_rank ~ Host_order  +
+                      ses_pd + EvoIso +  
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity_homos, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.98, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_homos, "../fit_models/indiv_severity_homoHosts.rds")
+
+} else { severity_homos <- readRDS("../fit_models/indiv_severity_homoHosts.rds")}
+
+model <- severity_homos
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_homos)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-8,10)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_severity_homoHosts_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+### Joint results plots (individual level homologous host models)
+
+```{r joint_conditionals_intervals_plot_indiv_homos, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-15,12)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_homoHosts.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+
+
 ## Joint results plots - species and individual models combined
 
 ```{r joint_species_individual_plots, echo=T, eval=T, message=F, warning=F}
@@ -2474,6 +3777,748 @@ ggsave("../plots_tables/combined_species_individual_intervals.pdf", cp, width=11
 
 
 ```
+
+
+
+## Individual level models (no body mass correction)
+
+
+### Presence of disease - full model with dose uncorrected for body mass
+
+```{r indiv_disease_dose_amount, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_disease_dose_amount.rds")) {
+
+  disease_dose_amount <- brm(Disease_YN ~ Host_order + 
+                      ses_pd + EvoIso +  
+                       Dose_amount + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_dose_amount, "../fit_models/indiv_disease_dose_amount.rds")
+
+} else { disease_dose_amount <- readRDS("../fit_models/indiv_disease_dose_amount.rds")}
+
+model <- disease_dose_amount
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_full)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank()) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_disease_dose_amount_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Mortality - full model with dose uncorrected for body mass
+
+```{r indiv_mortality_dose_amount, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_mort_dose_amount.rds")) {
+
+  mort_dose_amount <- brm(Mortality_YN ~ Host_order +
+                      ses_pd + EvoIso + 
+                       Dose_amount + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, 
+    cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mort_dose_amount, "../fit_models/indiv_mort_dose_amount.rds")
+
+} else { mort_dose_amount <- readRDS("../fit_models/indiv_mort_dose_amount.rds")}
+
+model <- mort_dose_amount
+# summary(model, prob=0.9)
+
+# save memory
+rm(mort_dose_amount_mass)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-18,18)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_mortality_dose_amount_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Severity - full model with dose uncorrected for body mass
+
+```{r indiv_severity_dose_amount, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_severity_dose_amount.rds")) {
+
+  severity_dose_amount <- brm(severity_rank ~ Host_order + 
+                      ses_pd + EvoIso +  
+                       Dose_amount + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.98, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_dose_amount, "../fit_models/indiv_severity_dose_amount.rds")
+
+} else { severity_dose_amount <- readRDS("../fit_models/indiv_severity_dose_amount.rds")}
+
+model <- severity_dose_amount
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_dose_amount)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_severity_dose_amount_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Joint results plots (individual level - dose uncorrected for body mass)
+
+```{r joint_conditionals_intervals_plot_indiv_dos_amount, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-15,10)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_dose_amount.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+## Individual level models (dose and body mass separate)
+
+### Presence of disease - full model with dose and body mass (separate)
+
+```{r indiv_disease_dose_amount_mass_separate, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_disease_dose_amount_mass.rds")) {
+
+  disease_dose_amount_mass <- brm(Disease_YN ~ Host_order + 
+                      ses_pd + EvoIso + adult_mass_g +  
+                       Dose_amount + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_dose_amount_mass, "../fit_models/indiv_disease_dose_amount_mass.rds")
+
+} else { disease_dose_amount_mass <- readRDS("../fit_models/indiv_disease_dose_amount_mass.rds")}
+
+model <- disease_dose_amount_mass
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_full)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-15,15)) + 
+      ylab("Conditional log-odds of disease") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank()) + 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_disease_dose_amount_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Mortality - full model with dose and body mass (separate)
+
+```{r indiv_mortality_dose_amount_mass, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_mort_dose_amount_mass.rds")) {
+
+  mort_dose_amount_mass <- brm(Mortality_YN ~ Host_order +
+                      ses_pd + EvoIso + adult_mass_g +
+                       Dose_amount + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, 
+    cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.95, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mort_dose_amount_mass, "../fit_models/indiv_mort_dose_amount_mass.rds")
+
+} else { mort_dose_amount_mass <- readRDS("../fit_models/indiv_mort_dose_amount_mass.rds")}
+
+model <- mort_dose_amount_mass
+# summary(model, prob=0.9)
+
+# save memory
+rm(mort_dose_amount)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-18,18)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+# ggsave("../plots_tables/individual_level_mortality_dose_amount_mass_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Severity - full model with dose and body mass (separate)
+
+```{r indiv_severity_dose_amount_mass, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_severity_dose_amount_mass.rds")) {
+
+  severity_dose_amount_mass <- brm(severity_rank ~ Host_order + 
+                      ses_pd + EvoIso +  adult_mass_g + 
+                       Dose_amount + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_dose_amount_mass, "../fit_models/indiv_severity_dose_amount_mass.rds")
+
+} else { severity_dose_amount_mass <- readRDS("../fit_models/indiv_severity_dose_amount_mass.rds")}
+
+model <- severity_dose_amount_mass
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_dose_amount_mass)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_severity_dose_amount_mass_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Joint results plots (individual level - dose and body mass (separate))
+
+```{r joint_conditionals_intervals_plot_indiv_dose_mass, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-15,10)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_dose_amount_mass.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+
+## Individual level models - Removing inoculations into the brain
+
+
+### Disease presence
+
+```{r disease_no_brain_infections, echo=T, eval=T, message=F, warning=F}
+
+dat_dis_nobrain <- dat_dis %>% filter(Route_type!="Injection (brain)")
+
+if (!file.exists("../fit_models/indiv_disease_no_brain.rds")) {
+
+  disease_no_brain <- brm(Disease_YN ~ Host_order + 
+                      ses_pd + EvoIso + 
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_dis_nobrain, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_no_brain, "../fit_models/indiv_disease_no_brain.rds")
+
+} else { disease_no_brain <- readRDS("../fit_models/indiv_disease_no_brain.rds")}
+
+model <- disease_no_brain
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_no_brain)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of disease presence") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+### Mortality
+
+```{r mortality_no_brain_infections, echo=T, eval=T, message=F, warning=F}
+
+# Mortality
+
+dat_mort_nobrain <- dat_mort %>% filter(Route_type!="Injection (brain)")
+
+if (!file.exists("../fit_models/indiv_mort_no_brain.rds")) {
+
+  mort_no_brain <- brm(Mortality_YN ~ Host_order + 
+                      ses_pd + EvoIso + 
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_mort_nobrain, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mort_no_brain, "../fit_models/indiv_mort_no_brain.rds")
+
+} else { mort_no_brain <- readRDS("../fit_models/indiv_mort_no_brain.rds")}
+
+model <- mort_no_brain
+# summary(model, prob=0.9)
+
+# save memory
+rm(mort_no_brain)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-16,8)) + 
+      ylab("Conditional log-odds of mortality") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+
+```
+
+Sample size: `r nrow(model$data)`
+
+
+### Severity
+
+```{r severity_no_brain_infections, echo=T, eval=T, message=F, warning=F}
+
+
+dat_severity_nobrain <- dat_severity %>% filter(Route_type!="Injection (brain)")
+
+if (!file.exists("../fit_models/indiv_severity_no_brain.rds")) {
+
+  severity_no_brain <- brm(severity_rank ~ Host_order + 
+                       ses_pd + EvoIso + 
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_severity_nobrain, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_no_brain, "../fit_models/indiv_severity_no_brain.rds")
+
+} else { severity_no_brain <- readRDS("../fit_models/indiv_severity_no_brain.rds")}
+
+model <- severity_no_brain
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_no_brain)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,7)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+### Joint results plots (individual level models without brain inoculations)
+
+```{r joint_conditionals_intervals_plot_indiv_bo_brain, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-15,10)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_no_brain.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+## Individual level models - viruses inoculated into both orders
+
+
+```{r viruses_both_orders_dat, echo=F, eval=T}
+### Subset to viruses inoculated into both host orders
+
+virus_subset <- intersect(dat$Virus_ICTV[dat$Host_order=="Chiroptera"], dat$Virus_ICTV[dat$Host_order=="Rodentia"] )
+
+virus_subset #9 viruses
+
+dat_viruses_both <- dat[dat$Virus_ICTV %in% virus_subset,]
+
+dat_viruses_both <- dat_viruses_both[dat_viruses_both$Susceptible_YN==1,]
+dat_viruses_both <- dat_viruses_both[!is.na(dat_viruses_both$Susceptible_YN),]
+
+dat_viruses_both <- dat_viruses_both[!is.na(dat_viruses_both$Mortality_YN),]
+
+dat_viruses_both$ses_pd <- scale_half(dat_viruses_both$ses_pd)
+dat_viruses_both$EvoIso <- scale_half(dat_viruses_both$EvoIso)
+dat_viruses_both$adult_mass_g <- scale_half(log(dat_viruses_both$adult_mass_g))
+
+dat_viruses_both <- dat_viruses_both %>% group_by(Dose_unit) %>% mutate(Dose_mass = scale_half(log(Dose_mass)))
+dat_viruses_both <- dat_viruses_both %>% group_by(Dose_unit) %>% mutate(Dose_amount = scale_half(log(Dose_amount)))
+
+dat_viruses_both$Host_name <- dat_viruses_both$Host_Upham
+dat_viruses_both$Virus_name <- dat_viruses_both$Virus_ICTV
+
+# dim(dat_viruses_both)
+# n_distinct(dat_viruses_both$PaperID)#42
+# n_distinct(dat_viruses_both$Virus_ICTV)#8
+# n_distinct(dat_viruses_both$Host_Upham)#41
+# n_distinct(paste0(dat_viruses_both$Host_Upham, dat_viruses_both$Virus_ICTV))#47
+
+# dat_viruses_both %>% ungroup() %>% select(c(Host_order, Host_Upham)) %>% unique() %>% 
+#                       group_by(Host_order) %>% summarise(n_hosts=n_distinct(Host_Upham))
+# Rodentia: 26
+# Chiroptera: 15
+
+# unique(dat_viruses_both$Virus_ICTV)
+
+```
+
+
+### Disease presence - viruses inoculated into both host orders
+
+```{r disease_viruses_both_orders, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_disease_viruses_both_orders.rds")) {
+
+  disease_viruses_both_orders <- brm(Disease_YN ~ Host_order + 
+                      ses_pd + EvoIso + 
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_viruses_both, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(disease_viruses_both_orders, "../fit_models/indiv_disease_viruses_both_orders.rds")
+
+} else { disease_viruses_both_orders <- readRDS("../fit_models/indiv_disease_viruses_both_orders.rds")}
+
+model <- disease_viruses_both_orders
+# summary(model, prob=0.9)
+
+# save memory
+rm(disease_viruses_both_orders)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Disease_YN, pp[1:500, ])
+
+param_tab(model)
+
+p1 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar1 <- intervals_plot(model)
+
+plot_grid(p1, ar1, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_disease_viruses_both_orders.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+### Mortality - viruses inoculated into both host orders
+
+```{r mortality_viruses_both_orders, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_mort_viruses_both_orders.rds")) {
+
+  mort_viruses_both_orders <- brm(Mortality_YN ~ Host_order + 
+                      ses_pd + EvoIso + 
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_viruses_both, family=bernoulli(link = "logit"), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(mort_viruses_both_orders, "../fit_models/indiv_mort_viruses_both_orders.rds")
+
+} else { mort_viruses_both_orders <- readRDS("../fit_models/indiv_mort_viruses_both_orders.rds")}
+
+model <- mort_viruses_both_orders
+# summary(model, prob=0.9)
+
+# save memory
+rm(mort_viruses_both_orders)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$Mortality_YN, pp[1:500, ])
+
+param_tab(model)
+
+p2 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar2 <- intervals_plot(model)
+
+plot_grid(p2, ar2, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_mort_viruses_both_orders.pdf", width=8, height=3)
+
+
+```
+Sample size: `r nrow(model$data)`
+
+
+### Severity - viruses inoculated into both host orders
+
+```{r indiv_severity_viruses_both_orders, echo=T, eval=T}
+
+if (!file.exists("../fit_models/indiv_severity_viruses_both_orders.rds")) {
+
+  severity_viruses_both_orders <- brm(severity_rank ~ Host_order + 
+                      ses_pd + EvoIso + 
+                       Dose_mass + (1|Dose_unit) + 
+                      (1|PaperID) +    
+                      (1|Host_name) + (1|Virus_name) +
+                      (1|Host_Upham) + (1|Virus_ICTV) + 
+                      (1|Route_type), 
+    data=dat_viruses_both, family=cumulative(probit), 
+    prior=custom_prior,
+    iter=5000, thin=1, cov_ranef = list(Host_Upham = host_cov, Virus_ICTV=virus_cov),
+    control=list(adapt_delta=0.99, max_treedepth=12), cores=4, 
+    save_pars=save_pars(all=TRUE))
+
+  saveRDS(severity_viruses_both_orders, "../fit_models/indiv_severity_viruses_both_orders.rds")
+
+} else { severity_viruses_both_orders <- readRDS("../fit_models/indiv_severity_viruses_both_orders.rds")}
+
+model <- severity_viruses_both_orders
+# summary(model, prob=0.9)
+
+# save memory
+rm(severity_viruses_both_orders)
+
+# pp <- brms::posterior_predict(model)
+# ppc_dens_overlay(y=model$data$severity_rank, pp[1:500, ])
+
+param_tab(model)
+
+p3 <- cond_eff_plot(model) + scale_y_continuous(lim=c(-12,12)) + 
+      ylab("Conditional log-odds of severity") + xlab("") + 
+      theme(axis.title=element_text(size=9),axis.text.x=element_text(size=10), 
+            panel.grid.major = element_blank(), 
+            panel.grid.minor = element_blank())+ 
+      scale_x_discrete(limits = c("Chiroptera","Rodentia"))
+
+ar3 <- intervals_plot(model)
+
+plot_grid(p3, ar3, align="h", rel_widths =c(0.7,1))
+# ggsave("../plots_tables/individual_level_severity_viruses_both_orders_comboplot.pdf", width=8, height=3)
+
+```
+Sample size: `r nrow(model$data)`
+
+
+
+
+### Joint results plots (individual level - viruses inoculated into both host orders)
+
+```{r joint_conditionals_intervals_plot_indiv_viruses_both_host_orders, echo=T, eval=T, message=F, warning=F}
+
+## Joint plot
+global_ylim <-  scale_y_continuous(lim=c(-15,12)) 
+padding <- theme(plot.margin = unit(c(t=0, r=-3, b=0, l=0), "cm"))
+
+joint_plot <- joint_conditionals_intervals(p1,p2,p3,global_ylim,padding,ar1,ar2,ar3)
+
+ggsave("../plots_tables/individual_level_conditionals_intervals_viruses_both_host_orders.pdf", joint_plot, width=10.5, height=5.5)
+
+```
+
+
+
+<!-- ################################ -->
 
 
 
@@ -2594,6 +4639,84 @@ ggsave("../plots_tables/CFR_vs_severity_annotated_v2.pdf", width = 8.2, height =
 
 
 
+## mean CFR humans vs mean CFR bats/rodents
+
+
+dat_meancfr <- dat %>% filter(Susceptible_YN==1) %>% select(PaperID, IndividualID, Virus_ICTV, Host_Upham, Host_order, Mortality_YN) %>% unique()
+
+dat_meancfr <- dat_meancfr %>% filter(!is.na(IndividualID), !is.na(Mortality_YN))
+
+dat_meancfr <- dat_meancfr %>% group_by(PaperID, Virus_ICTV, Host_Upham, Host_order) %>% 
+                  summarise(n_mort=sum(Mortality_YN),n_indiv=n_distinct(IndividualID)) %>% unique()
+
+dat_meancfr$exp_CFR <- dat_meancfr$n_mort/dat_meancfr$n_indiv
+
+dat_meancfr <- left_join(dat_meancfr, unique(select(vtraits, c(Virus_ICTV, CFR_avg))))
+
+dat_meancfr <- filter(dat_meancfr, !is.na(CFR_avg))
+
+dat_meancfr$Host_order <- forcats::fct_relevel(dat_meancfr$Host_order, "Chiroptera", "Rodentia")
+
+
+
+c3 <- ggplot(dat_meancfr, aes(y=CFR_avg, x=exp_CFR, shape=Host_order, color=Host_order)) +
+              geom_jitter(size=3, alpha=0.4) + 
+              scale_color_manual(values=colours_BR) + 
+              labs(color="Host order", shape="Host order") + xlab("Infection-Fatality Rate in Inoculated Host") + ylab("Mean Case-Fatality Rate in Humans (%)") +
+              theme_bw() + theme(
+                        panel.grid.major.y=element_blank(),
+                        panel.grid.minor.y=element_blank(),
+                        panel.grid.major.x=element_blank(),
+                        panel.grid.minor.x=element_blank(),
+                        ) + facet_wrap(~Host_order)
+
+# annotating with virus family names
+
+c3 <- c3 + coord_cartesian(clip = 'off') +   # This keeps the labels from disappearing
+      theme(plot.margin = unit(c(1,1,1,1), "lines")) + 
+        theme(legend.spacing = unit(1, "pt"), 
+        legend.key.height = unit(14, "pt"), 
+        legend.spacing.x = unit(5, "pt"), 
+        legend.key.width  = unit(0, "pt"), 
+        legend.background = element_blank(), 
+        legend.box.background = element_blank(),
+        legend.justification = "top",
+        legend.margin=margin(60,35,4,95),
+        legend.box.spacing = margin(0.0),
+        legend.title = element_text(size = 10))
+# c3
+
+vir_lab_x <- 0.678
+vir_lab_font <- 10
+line_offset <- -0.0065
+vir_lab_color <- "gray35"#"darkslategrey"
+
+
+ggdraw(c3) + 
+
+              draw_label("Lyssaviruses +\nWhitewater Arroyo\nmammarenavirus", x = vir_lab_x, y = 0.89, hjust=0, color=vir_lab_color, size=vir_lab_font) +
+              draw_line( y = c(0.87, 0.91), x = c(vir_lab_x-0.005, vir_lab_x-0.005),
+                  color = vir_lab_color, size = 0.5) +
+            
+              draw_label("Filoviruses +\nHenipaviruses", x = vir_lab_x, y = 0.60, hjust=0, color=vir_lab_color, size=vir_lab_font) +
+              draw_line( y = c(0.43, 0.77), x = c(vir_lab_x-0.005, vir_lab_x-0.005),
+                  color = vir_lab_color, size = 0.5) +
+
+
+              draw_label("Eastern Equine Encephalitis Virus +\nJapanese Encephalitis Virus", x = vir_lab_x, y = 0.36, hjust=0, color=vir_lab_color, size=vir_lab_font) +
+              draw_line( y = c(0.31, 0.41), x = c(vir_lab_x-0.005, vir_lab_x-0.005),
+                  color = vir_lab_color, size = 0.5) + 
+
+              draw_label("Alphaviruses, Flaviviruses, Hantaviruses,\nRift Valley Fever virus, Monkeypox,\nColorado tick fever coltivirus, SARS,\nFoot-and-mouth disease virus,\nParamyxoviruses (Sosuga and Newcastle)", x = vir_lab_x, y = 0.17, hjust=0, color=vir_lab_color, size=vir_lab_font) +
+              draw_line( y = c(0.1, 0.24), x = c(vir_lab_x-0.005, vir_lab_x-0.005),
+                  color = vir_lab_color, size = 0.5)
+
+
+ggsave("../plots_tables/CFR_vs_IFR.pdf", width = 8.2, height = 5.25) 
+
+
+
+
 # CFR vs severity - annotated
 dat_cfr_res <- left_join(dat_cfr, virus_traits)
 
@@ -2690,7 +4813,6 @@ Comparing CFR for all viruses, regardless of host origin, and excluding bat viru
 
 
 ```{r crf_model, echo=T, eval=T, message=F, warning=F}
-
 
 dat_cfr$Virus_name <- dat_cfr$Virus_ICTV
 dat_cfr$Host_name <- dat_cfr$Host_Upham
@@ -2871,12 +4993,12 @@ p1 <- plot_grid(  ar1 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effect
                   ar3 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nExcluding bat-reservoired viruses"), 
                   ar2 + xlim(-3, 2) + scale_y_discrete(labels = "With virus effects\nAll viruses"),
                   ar4 + xlim(-3, 2) + scale_y_discrete(labels = "No virus effects\nHeterologous hosts"),
-                  ar5 + xlim(-3, 2) + scale_y_discrete(labels = "With virus effects\nHeterologous hosts"),
+                  ar5 + xlim(-3, 2) + scale_y_discrete(labels = "With virus effects\nHeterologous hosts") + xlab("Effect of host order (Chiroptera) on human CFR") + theme(axis.title.x = element_text(vjust=-1)),
                   ncol=1, align = "v")
-p2 <- add_sub(p1, "Host order (Chiroptera) effect", x = 0, hjust = -3.5, size=10)
-ggdraw(p2)
+# p2 <- add_sub(p1, "Effect of host order (Chiroptera) on human case-fatality rate", x = 0, hjust = -3.5, size=10)
+p1
 
-ggsave("../plots_tables/CFR_models_intervals.pdf", width=6, height=6)
+ggsave("../plots_tables/CFR_models_intervals.pdf", p1, width=6, height=6)
 
 # dat_cfr %>% ungroup() %>% select(Virus_ICTV, CFR_avg) %>% unique() %>% arrange(CFR_avg) %>% View()
 

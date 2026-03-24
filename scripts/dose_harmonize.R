@@ -10,8 +10,8 @@ require(ape);packageVersion("ape")#5.5
 
 
 # data
-primary <- read.csv("../raw_data/primary_screen.csv")
-dat <- read.csv("../raw_data/individual_data.csv")
+primary <- read.csv("../raw_data/primary_screen_Mar5_2024.csv")
+dat <- read.csv("../raw_data/individual_data_Mar20_2024.csv")
 vtax <- read.csv("../clean_data/Virus_taxonomy.csv")
 viruses <- read.csv("../raw_data/VirusNames_translation_Feb23_2024.csv")
 viruses <- dplyr::left_join(viruses, vtax)
@@ -173,6 +173,8 @@ ggsave("../plots_tables/Inoculation_routes.png", height=6, width=6)
 
 
 # adjusting for body mass
+# dat_sm$Dose_mass <- log10(dat_sm$Dose_amount) / log10(dat_sm$adult_mass_g)
+# dat_sm$Dose_mass <- log10(dat_sm$Dose_amount) / (dat_sm$adult_mass_g)
 dat$Dose_mass <- (dat$Dose_amount) / (dat$adult_mass_g)
 hist(dat$Dose_mass)
 
@@ -278,6 +280,14 @@ write.csv(dose_dat, "../clean_data/dose_data.csv", row.names=FALSE)
 bayesplot_theme_set(theme_bw())
 
 dat_dose <- dose_dat
+
+# dat_dose <- left_join(dat, dose_dat)
+# dat_dose <- dat_dose[dat_dose$Susceptible_YN==1,]
+# dat_dose <- dat_dose[!is.na(dat_dose$Susceptible_YN),]
+
+# # log transform dose/g
+# dat_dose <- dat_dose %>% group_by(Dose_unit) %>% mutate(Dose_mass = log(Dose_mass))
+
 dat_dose$Host_name <- dat_dose$Host_Upham
 dat_dose$Virus_name <- dat_dose$Virus_ICTV
 
@@ -303,7 +313,7 @@ vtax <- as.data.frame(unclass(vtax), stringsAsFactors=TRUE)
 frm <- ~superkingdom/realm/kingdom/phylum/class/order/family/genus/Virus_ICTV
 vtree <- as.phylo(frm, data = vtax, collapse=FALSE)
 vtree$edge.length <- rep(1, nrow(vtree$edge))
-
+http://www.banningeyre.com/
 # include only viruses in subset data (e.g. after removing mole)
 vtree <- drop.tip(vtree, setdiff(vtree$tip.label, dat$Virus_ICTV))
 # plot(vtree)
@@ -314,9 +324,14 @@ virus_cov <- vcv(vtree, corr=TRUE)
 
 
 # adding host_order
+
 dat_dose <- left_join(dat_dose, select(dat, c(Host_Upham, Host_order), ))
 
-if (!file.exists("../fit_models/dose_model.rds")) {
+names(dat_dose)
+
+hist(log(dat_dose$Dose_mass))
+
+# if (!file.exists("../fit_models/dose_model.rds")) {
 
   dose_m1 <- brm(log(Dose_mass) ~ Host_order +
   					  (1|Dose_unit) +  (1|Route_type), # + 
@@ -330,10 +345,15 @@ if (!file.exists("../fit_models/dose_model.rds")) {
 
   saveRDS(dose_m1, "../fit_models/dose_model.rds")
 
-} else { dose_m1 <- readRDS("../fit_models/dose_model.rds")}
+# } else { dose_m1 <- readRDS("../fit_models/dose_model.rds")}
 
 
 summary(dose_m1)
+
+
+
+
+
 
 
 # merging with severity data to plot severity by dose

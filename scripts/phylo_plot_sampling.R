@@ -388,8 +388,8 @@ df2 <- df2 %>% dplyr::select(-Virus_ICTV)
 # shorten virus names except for ebolaviruses
 rownames(df2) <- gsub(" virus$", "", rownames(df2))
 rownames(df2)[grep("Avian ortho",rownames(df2))] <- "Newcastle Disease"
-rownames(df2)[grep("Middle East",rownames(df2))] <- "MERS-related coronavirus"
-rownames(df2)[grep("Severe acute",rownames(df2))] <- "SARS-related coronavirus"
+rownames(df2)[grep("Middle East",rownames(df2))] <- "MERS coronavirus"
+rownames(df2)[grep("Severe acute",rownames(df2))] <- "SARS coronavirus"
 rownames(df2)[grep("ebolavirus", rownames(df2), invert=T)] <- gsub(" [a-z]*virus$", "", rownames(df2)[grep("ebolavirus", rownames(df2), invert=T)])
 rownames(df2) <- gsub("Venezuelan equine encephalitis", "VEE", rownames(df2))
 rownames(df2) <- gsub("Western equine encephalitis", "WEE", rownames(df2))
@@ -398,8 +398,8 @@ rownames(df2) <- gsub(" disease$", "", rownames(df2))
 
 vtree$tip.label <- gsub(" virus$", "", vtree$tip.label)
 vtree$tip.label[grep("Avian ortho",vtree$tip.label)] <- "Newcastle Disease"
-vtree$tip.label[grep("Middle East",vtree$tip.label)] <- "MERS-related coronavirus"
-vtree$tip.label[grep("Severe acute",vtree$tip.label)] <- "SARS-related coronavirus"
+vtree$tip.label[grep("Middle East",vtree$tip.label)] <- "MERS coronavirus"
+vtree$tip.label[grep("Severe acute",vtree$tip.label)] <- "SARS coronavirus"
 vtree$tip.label[grep("ebolavirus", vtree$tip.label, invert=T)] <- gsub(" [a-z]*virus$", "", vtree$tip.label[grep("ebolavirus", vtree$tip.label, invert=T)])
 vtree$tip.label <- gsub("Venezuelan equine encephalitis", "VEE", vtree$tip.label)
 vtree$tip.label <- gsub("Western equine encephalitis", "WEE", vtree$tip.label)
@@ -428,7 +428,7 @@ v_counts <- gheatmap(v, df2, offset=11, color=NULL, width=4, colnames_offset_y=-
 v_counts
 
 ggsave("../plots_tables/virus_tree_with_counts.pdf", v_counts, width=7, height=11)
-ggsave("../plots_tables/virus_tree_with_counts.png", v_counts, width=7, height=11)
+# ggsave("../plots_tables/virus_tree_with_counts.png", v_counts, width=7, height=11)
 
 
 

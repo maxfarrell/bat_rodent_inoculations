@@ -1,64 +1,64 @@
-PaperID,Virus_reported,Virus_strain_isolate,Host_reported,Host_order,N_individuals,Susceptible_YN,ClinicalDisease,Mortality_YN,Histopathology,Organ_tissue_damaged,Behaviour,Physical_symptoms,Notes
-15,Kaeng Khoi virus,S-19-B,Chaerephon plicatus,Chiroptera,136,Y,Y,NA,severe,liver,NA,acute multifocal hepatitis,136 bats infected but high non-specific mortality and lots of prior exposure so cannot be sure of mortality. sample size reduced to 17 surviving individuals with no pre-existing neutralizing antibodies
-20,Rabies virus,Thompson,Tadarida mexicana,Chiroptera,492,Y,Y,Y,NA,NA,irritability; aggressiveness,occasional paralysis,animals that died within one week following inocculation were not analyzed; assuming that some of these individuals died of rabies infection; some animals sacrified in apparently good health after one week; noted as a relatively resistant host
-20,Rabies virus,Thompson,Myotis lucifugus,Chiroptera,116,Y,Y,Y,NA,NA,NA,occasional paralysis; Negri bodies in brain,
-32,Rabies virus,,Pteropus vampyrus,Chiroptera,67,Y,Y,Y,NA,NA,NA,vigorous and noisy,
-32,Rabies virus,,Phyllorina sp.,Chiroptera,NA,Y,Y,Y,NA,NA,NA,NA,less obvious signs of disease compared to Pteropus vampyrus
-32,Rabies virus,,Rhinolophus sp.,Chiroptera,NA,Y,Y,Y,NA,NA,NA,NA,less obvious signs of disease compared to Pteropus vampyrus
-32,Rabies virus,,Vesperugo sp.,Chiroptera,NA,Y,Y,Y,NA,NA,NA,NA,less obvious signs of disease compared to Pteropus vampyrus
-34,Rabies virus,Thompson,Tadarida mexicana,Chiroptera,240,Y,Y,Y,NA,NA,NA,NA,
-34,Rabies virus,Thompson,Myotis lucifugus,Chiroptera,184,Y,Y,Y,NA,NA,NA,NA,
-34,Rabies virus,59VI3B,Myotis lucifugus,Chiroptera,125,Y,Y,Y,NA,NA,NA,NA,
-35,Cocal virus,,Myotis lucifugus lucifugus,Chiroptera,55,Y,Y,Y,NA,NA,NA,NA,
-46,Rabies virus,Thompson,Tadarida b. mexicana,Chiroptera,215,Y,Y,Y,NA,NA,NA,NA,
-47,Rabies virus,Thompson,Tadarida brasiliensis mexicana,Chiroptera,492,Y,Y,Y,NA,NA,irritability and aggressiveness,NA,
-47,Rabies virus,Thompson,Myotis lucifugus lucifugus,Chiroptera,143,Y,Y,Y,NA,NA,irritability and aggressiveness,NA,
-58,Ground squirrel hepatitis virus,,Spermophilus beecheyi,Rodentia,24,Y,NA,NA,NA,NA,NA,NA,
-58,Ground squirrel hepatitis virus,,Spermophilus lateralis,Rodentia,19,N,NA,NA,NA,NA,NA,NA,
-58,Ground squirrel hepatitis virus,,Eutamias spp.,Rodentia,30,Y,N,N,none,none,none,none,no signs of disease
-64,Tick-borne encephalitis virus,1467,Myodes rutilus Pallas,Rodentia,20,Y,NA,N,NA,NA,NA,NA,Only recording information for infected adults but the study reports information on vertical transmission. No mentions of pathology in adults was mentioned but individuals survived over seven months and successfully mated therefore we assume the infections were not fatal.
-65,Rabies virus,,Gerbillus,Rodentia,90,Y,Y,Y,NA,NA,NA,NA,
-95,Puumala virus,Hargnies and Vouzon,Myodes glareolus,Rodentia,60,Y,N,Y,NA,NA,NA,NA,
-111,Rio Grande virus,,Neotoma micropus,Rodentia,14,Y,Y,NA,NA,NA,NA,NA,high mortality (36%)
-121,Ground squirrel hepatitis virus,,Spermophilus beecheyi,Rodentia,20,Y,Y,N,NA,NA,NA,NA,
-128,European bat lyssavirus type 1,EBLV-1aGE,Eptesicus fuscus,Chiroptera,34,Y,Y,Y,NA,NA,NA,NA,
-139,Monkeypox virus,MPX US03,Spermophilus tridecemlineatus,Rodentia,15,Y,Y,Y,NA,NA,anorexia; lethargy,nosebleeds; respiratory distress; labored breathing; audible wheezing,
-139,Monkeypox virus,MPX Z79,Spermophilus tridecemlineatus,Rodentia,15,Y,Y,Y,NA,NA,anorexia; lethargy,nosebleeds; respiratory distress; labored breathing; audible wheezing,
-142,Zika virusPRVA BC59,PRVA BC59,Marmota monax,Rodentia,3,N,N,NA,NA,NA,NA,NA,
-142,Zika virusPRVA BC59,PRVA BC59,Peromyscus maniculatus,Rodentia,3,N,N,NA,NA,NA,NA,NA,
-142,Zika virusFSS 13025,FSS 13025,Peromyscus maniculatus,Rodentia,2,N,N,NA,NA,NA,NA,NA,
-148,Monkeypox virus,MPXV-2003-358,Cynomys ludovicianus,Rodentia,4,Y,Y,Y,NA,NA,inappetance,weight loss; lesions,death in 3/4 individuals
-186,La Crosse virus,,Tamias striatus,Rodentia,6,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
-186,Snowshoe hare virus,,Tamias striatus,Rodentia,5,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
-186,SSH/SSH/LAC,,Tamias striatus,Rodentia,5,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
-186,SSH/LAC/SSH,,Tamias striatus,Rodentia,7,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
-186,SSH/LAC/LAC,,Tamias striatus,Rodentia,5,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
-204,Korean Hemorrhagic Fever,76-236,Apodemus agrarius coreae,Rodentia,6,Y,N,N,NA,NA,none,none,
-204,Korean Hemorrhagic Fever,76-236,Apodemus agrarius jejudoica,Rodentia,7,Y,N,N,NA,NA,none,none,
-217,Whitewater Arroyo virus,AV 9310135,Neotoma albigula,Rodentia,31,Y,N,N,NA,NA,none,none,
-219,Turkmenia-1-74,,Rhombomys opimus,Rodentia,86,Y,Y,Y,severe,liver; lungs; lymph nodes; intestine,loss of appetite,flaccidity; emaciation; cough; dyspnea; conjunctivitis,
-219,Turkmenia-1-74,,Citellus fulvus,Rodentia,60,Y,Y,Y,severe,lungs; lymph nodes; intestine,loss of appetite,flaccidity; emaciation; cough; dyspnea; conjunctivitis,
-246,Rabies virus,Thompson strain,Tadarida mexicana,Chiroptera,492,Y,Y,Y,NA,NA,irritability; aggressiveness,paralysis,
-246,Rabies virus,Thompson strain,Myotis lucifugus,Chiroptera,143,Y,Y,Y,NA,NA,irritability; aggressiveness,paralysis,
-248,Newcastle disease virus,California strain 11914,Myotus lucifugus,Chiroptera,18,Y,Y,Y,NA,NA,irritability; malaise,"rhyhmical contraction of muscles, paralyses of the hind legs; prostration",
-265,Rift Valley fever virus,,Apodemus sylvaticus,Rodentia,10,Y,Y,Y,NA,NA,,,Nearly always fatal
-265,Rift Valley fever virus,,Microtus agrestis,Rodentia,10,Y,Y,Y,NA,NA,,,Nearly always fatal
-265,Rift Valley fever virus,,Muscardinus avellanarius,Rodentia,3,Y,Y,Y,NA,NA,,,Nearly always fatal
-265,Rift Valley fever virus,,Sciurus carolinensis,Rodentia,1,Y,Y,N,NA,NA,,,severe but non-fatal reaction
-280,Rabies virus,Dr-19,Desmodus rotundus,Chiroptera,3,Y,Y,NA,NA,NA,fury,paralysis,
-281,Rabies virus,CASS88,Desmodus rotundus,Chiroptera,14,Y,Y,Y,NA,NA,depression; hypoactivity; anorexia,paralysis; tremors,
-282,Rabies virus,Thompson strain,Tadarida b. mexicana,Chiroptera,163,Y,Y,Y,NA,NA,irritability; aggressiveness,,23% of bats showed evidence of infection and only a small proportions developed symptoms of rabies
-284,Rabies virus,A06-3684,Eptesicus fuscus,Chiroptera,43,Y,Y,Y,NA,NA,"aggression, atypical vocalizations","paralysis, weight loss, ataxia",
-301,Ground squirrel hepatitis virus,,Spermophilus beecheyi,Rodentia,20,Y,Y,N,mild,liver,NA,NA,
-308,Bat lyssavirus Aravan,,Pipistrellus pipistrellus,Chiroptera,48,Y,Y,Y,NA,NA,hiding; aggression,,
-308,Rabies virus 1150,,Pipistrellus pipistrellus,Chiroptera,46,Y,Y,Y,NA,NA,hiding; aggression; inappetence,weakness,
-308,Lyssavirus serotype 4 Yuli,,Pipistrellus pipistrellus,Chiroptera,46,Y,Y,Y,NA,NA,hiding; aggression,spastic paresis; paralysis,
-327,Rift Valley fever virus,763/70,Praomys natalensis,Rodentia,275,N,N,Y,NA,NA,NA,NA,
-327,Rift Valley fever virus,763/70,Tatera leucogaster,Rodentia,20,Y,NA,N,NA,NA,NA,NA,
-327,Rift Valley fever virus,763/70,Aethomys chrysophilus,Rodentia,55,Y,Y,Y,NA,NA,NA,NA,
-327,Rift Valley fever virus,763/70,Saccostomys campestris,Rodentia,15,Y,Y,Y,NA,NA,NA,NA,
-327,Rift Valley fever virus,763/70,Lemniscomys griselda,Rodentia,11,Y,Y,Y,NA,NA,NA,NA,
-327,Rift Valley fever virus,763/70,Rhabdomys pumilio,Rodentia,20,Y,Y,Y,NA,NA,NA,NA,
-327,Rift Valley fever virus,763/70,Aethomys namaquensis,Rodentia,12,Y,NA,N,NA,NA,NA,NA,Two deaths but these could not be attributed to RVF infection
-338,Ground squirrel hepatitis virus,,Spermophilus beecheyi,Rodentia,21,Y,Y,N,mild,liver,NA,NA,
-339,Pacui virus,prototype strain or BeAN 150381,Oryzomys capito,Rodentia,32,Y,Y,Y,NA,NA,NA,NA,Only young animals infected with low passage material developed detectable viremia and dies after viremia lasting at least 7 days
+PaperID,Virus_reported,Virus_strain_isolate,Passage_host,N_passages,Host_reported,Host_order,N_individuals,Susceptible_YN,ClinicalDisease,Mortality_YN,Histopathology,Organ_tissue_damaged,Behaviour,Physical_symptoms,Notes
+15,Kaeng Khoi virus,S-19-B,Primate,9,Chaerephon plicatus,Chiroptera,136,Y,Y,NA,severe,liver,NA,acute multifocal hepatitis,136 bats infected but high non-specific mortality and lots of prior exposure so cannot be sure of mortality. sample size reduced to 17 surviving individuals with no pre-existing neutralizing antibodies
+20,Rabies virus,Thompson,Rodentia,2,Tadarida mexicana,Chiroptera,492,Y,Y,Y,NA,NA,irritability; aggressiveness,occasional paralysis,animals that died within one week following inocculation were not analyzed; assuming that some of these individuals died of rabies infection; some animals sacrified in apparently good health after one week; noted as a relatively resistant host
+20,Rabies virus,Thompson,Rodentia,2,Myotis lucifugus,Chiroptera,116,Y,Y,Y,NA,NA,NA,occasional paralysis; Negri bodies in brain,
+32,Rabies virus,,Carnivora,2,Pteropus vampyrus,Chiroptera,67,Y,Y,Y,NA,NA,NA,vigorous and noisy,
+32,Rabies virus,,Carnivora,2,Phyllorina sp.,Chiroptera,NA,Y,Y,Y,NA,NA,NA,NA,less obvious signs of disease compared to Pteropus vampyrus
+32,Rabies virus,,Carnivora,2,Rhinolophus sp.,Chiroptera,NA,Y,Y,Y,NA,NA,NA,NA,less obvious signs of disease compared to Pteropus vampyrus
+32,Rabies virus,,Carnivora,2,Vesperugo sp.,Chiroptera,NA,Y,Y,Y,NA,NA,NA,NA,less obvious signs of disease compared to Pteropus vampyrus
+34,Rabies virus,Thompson,Rodentia,2,Tadarida mexicana,Chiroptera,240,Y,Y,Y,NA,NA,NA,NA,
+34,Rabies virus,Thompson,Rodentia,2,Myotis lucifugus,Chiroptera,184,Y,Y,Y,NA,NA,NA,NA,
+34,Rabies virus,59VI3B,Rodentia,2,Myotis lucifugus,Chiroptera,125,Y,Y,Y,NA,NA,NA,NA,
+35,Cocal virus,,Rodentia,9,Myotis lucifugus lucifugus,Chiroptera,55,Y,Y,Y,NA,NA,NA,NA,
+46,Rabies virus,Thompson,Rodentia,2,Tadarida b. mexicana,Chiroptera,215,Y,Y,Y,NA,NA,NA,NA,
+47,Rabies virus,Thompson,Rodentia,2,Tadarida brasiliensis mexicana,Chiroptera,492,Y,Y,Y,NA,NA,irritability and aggressiveness,NA,
+47,Rabies virus,Thompson,Rodentia,2,Myotis lucifugus lucifugus,Chiroptera,143,Y,Y,Y,NA,NA,irritability and aggressiveness,NA,
+58,Ground squirrel hepatitis virus,,None,0,Spermophilus beecheyi,Rodentia,24,Y,NA,NA,NA,NA,NA,NA,
+58,Ground squirrel hepatitis virus,,None,0,Spermophilus lateralis,Rodentia,19,N,NA,NA,NA,NA,NA,NA,
+58,Ground squirrel hepatitis virus,,None,0,Eutamias spp.,Rodentia,30,Y,N,N,none,none,none,none,no signs of disease
+64,Tick-borne encephalitis virus,1467,Rodentia,20,Myodes rutilus Pallas,Rodentia,20,Y,NA,N,NA,NA,NA,NA,Only recording information for infected adults but the study reports information on vertical transmission. No mentions of pathology in adults was mentioned but individuals survived over seven months and successfully mated therefore we assume the infections were not fatal.
+65,Rabies virus,,None,0,Gerbillus,Rodentia,90,Y,Y,Y,NA,NA,NA,NA,
+95,Puumala virus,Hargnies and Vouzon,Primate,3,Myodes glareolus,Rodentia,60,Y,N,Y,NA,NA,NA,NA,
+111,Rio Grande virus,,Rodentia,3,Neotoma micropus,Rodentia,14,Y,Y,NA,NA,NA,NA,NA,high mortality (36%)
+121,Ground squirrel hepatitis virus,,None,0,Spermophilus beecheyi,Rodentia,20,Y,Y,N,NA,NA,NA,NA,
+128,European bat lyssavirus type 1,EBLV-1aGE,Rodentia,4,Eptesicus fuscus,Chiroptera,34,Y,Y,Y,NA,NA,NA,NA,
+139,Monkeypox virus,MPX US03,Primate,Unknown,Spermophilus tridecemlineatus,Rodentia,15,Y,Y,Y,NA,NA,anorexia; lethargy,nosebleeds; respiratory distress; labored breathing; audible wheezing,
+139,Monkeypox virus,MPX Z79,Primate,Unknown,Spermophilus tridecemlineatus,Rodentia,15,Y,Y,Y,NA,NA,anorexia; lethargy,nosebleeds; respiratory distress; labored breathing; audible wheezing,
+142,Zika virusPRVA BC59,PRVA BC59,Unknown,Unknown,Marmota monax,Rodentia,3,N,N,NA,NA,NA,NA,NA,
+142,Zika virusPRVA BC59,PRVA BC59,Unknown,Unknown,Peromyscus maniculatus,Rodentia,3,N,N,NA,NA,NA,NA,NA,
+142,Zika virusFSS 13025,FSS 13025,Unknown,Unknown,Peromyscus maniculatus,Rodentia,2,N,N,NA,NA,NA,NA,NA,
+148,Monkeypox virus,MPXV-2003-358,Primate,2,Cynomys ludovicianus,Rodentia,4,Y,Y,Y,NA,NA,inappetance,weight loss; lesions,death in 3/4 individuals
+186,La Crosse virus,,Rodentia,6,Tamias striatus,Rodentia,6,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
+186,Snowshoe hare virus,,Rodentia,16,Tamias striatus,Rodentia,5,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
+186,SSH/SSH/LAC,,Rodentia,2-3,Tamias striatus,Rodentia,5,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
+186,SSH/LAC/SSH,,Rodentia,2-3,Tamias striatus,Rodentia,7,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
+186,SSH/LAC/LAC,,Rodentia,2-3,Tamias striatus,Rodentia,5,Y,N,N,NA,NA,none,none,recording results for adult chipmunks; suckling mice did show signs of illness but also appeared to not be kept in good condition
+204,Korean Hemorrhagic Fever,76-236,None,0,Apodemus agrarius coreae,Rodentia,6,Y,N,N,NA,NA,none,none,
+204,Korean Hemorrhagic Fever,76-236,None,0,Apodemus agrarius jejudoica,Rodentia,7,Y,N,N,NA,NA,none,none,
+217,Whitewater Arroyo virus,AV 9310135,Primate,Unknown,Neotoma albigula,Rodentia,31,Y,N,N,NA,NA,none,none,
+219,Turkmenia-1-74,,Aves,5-8,Rhombomys opimus,Rodentia,86,Y,Y,Y,severe,liver; lungs; lymph nodes; intestine,loss of appetite,flaccidity; emaciation; cough; dyspnea; conjunctivitis,
+219,Turkmenia-1-74,,Aves,5-8,Citellus fulvus,Rodentia,60,Y,Y,Y,severe,lungs; lymph nodes; intestine,loss of appetite,flaccidity; emaciation; cough; dyspnea; conjunctivitis,
+246,Rabies virus,Thompson strain,Rodentia,2-3,Tadarida mexicana,Chiroptera,492,Y,Y,Y,NA,NA,irritability; aggressiveness,paralysis,
+246,Rabies virus,Thompson strain,Rodentia,2-3,Myotis lucifugus,Chiroptera,143,Y,Y,Y,NA,NA,irritability; aggressiveness,paralysis,
+248,Newcastle disease virus,California strain 11914,Aves,25,Myotus lucifugus,Chiroptera,18,Y,Y,Y,NA,NA,irritability; malaise,"rhyhmical contraction of muscles, paralyses of the hind legs; prostration",
+265,Rift Valley fever virus,,Unknown,Unknown,Apodemus sylvaticus,Rodentia,10,Y,Y,Y,NA,NA,,,Nearly always fatal
+265,Rift Valley fever virus,,Unknown,Unknown,Microtus agrestis,Rodentia,10,Y,Y,Y,NA,NA,,,Nearly always fatal
+265,Rift Valley fever virus,,Unknown,Unknown,Muscardinus avellanarius,Rodentia,3,Y,Y,Y,NA,NA,,,Nearly always fatal
+265,Rift Valley fever virus,,Unknown,Unknown,Sciurus carolinensis,Rodentia,1,Y,Y,N,NA,NA,,,severe but non-fatal reaction
+280,Rabies virus,Dr-19,Unknown,Unknown,Desmodus rotundus,Chiroptera,3,Y,Y,NA,NA,NA,fury,paralysis,
+281,Rabies virus,CASS88,Unknown,Unknown,Desmodus rotundus,Chiroptera,14,Y,Y,Y,NA,NA,depression; hypoactivity; anorexia,paralysis; tremors,
+282,Rabies virus,Thompson strain,Rodentia,2,Tadarida b. mexicana,Chiroptera,163,Y,Y,Y,NA,NA,irritability; aggressiveness,,23% of bats showed evidence of infection and only a small proportions developed symptoms of rabies
+284,Rabies virus,A06-3684,Rodentia,1,Eptesicus fuscus,Chiroptera,43,Y,Y,Y,NA,NA,"aggression, atypical vocalizations","paralysis, weight loss, ataxia",
+301,Ground squirrel hepatitis virus,,Unknown,Unknown,Spermophilus beecheyi,Rodentia,20,Y,Y,N,mild,liver,NA,NA,
+308,Bat lyssavirus Aravan,,Unknown,Unknown,Pipistrellus pipistrellus,Chiroptera,48,Y,Y,Y,NA,NA,hiding; aggression,,
+308,Rabies virus 1150,,Unknown,Unknown,Pipistrellus pipistrellus,Chiroptera,46,Y,Y,Y,NA,NA,hiding; aggression; inappetence,weakness,
+308,Lyssavirus serotype 4 Yuli,,Unknown,Unknown,Pipistrellus pipistrellus,Chiroptera,46,Y,Y,Y,NA,NA,hiding; aggression,spastic paresis; paralysis,
+327,Rift Valley fever virus,763/70,Rodentia,2,Praomys natalensis,Rodentia,275,N,N,Y,NA,NA,NA,NA,
+327,Rift Valley fever virus,763/70,Rodentia,2,Tatera leucogaster,Rodentia,20,Y,NA,N,NA,NA,NA,NA,
+327,Rift Valley fever virus,763/70,Rodentia,2,Aethomys chrysophilus,Rodentia,55,Y,Y,Y,NA,NA,NA,NA,
+327,Rift Valley fever virus,763/70,Rodentia,2,Saccostomys campestris,Rodentia,15,Y,Y,Y,NA,NA,NA,NA,
+327,Rift Valley fever virus,763/70,Rodentia,2,Lemniscomys griselda,Rodentia,11,Y,Y,Y,NA,NA,NA,NA,
+327,Rift Valley fever virus,763/70,Rodentia,2,Rhabdomys pumilio,Rodentia,20,Y,Y,Y,NA,NA,NA,NA,
+327,Rift Valley fever virus,763/70,Rodentia,2,Aethomys namaquensis,Rodentia,12,Y,NA,N,NA,NA,NA,NA,Two deaths but these could not be attributed to RVF infection
+338,Ground squirrel hepatitis virus,,None,0,Spermophilus beecheyi,Rodentia,21,Y,Y,N,mild,liver,NA,NA,
+339,Pacui virus,prototype strain or BeAN 150381,Rodentia,2-20,Oryzomys capito,Rodentia,32,Y,Y,Y,NA,NA,NA,NA,Only young animals infected with low passage material developed detectable viremia and dies after viremia lasting at least 7 days
