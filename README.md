@@ -1,6 +1,7 @@
-# Experimental infections reveal unexceptional viral tolerance in bats
+# Viral disease outcomes are indistinguishable between experimentally infected bats and rodents
 
-Data and code to reproduce the analyses in "Experimental infections reveal unexceptional viral tolerance in bats"
+Data and code to reproduce the analyses in ["Viral disease outcomes are indistinguishable between
+experimentally infected bats and rodents"](https://doi.org/10.1101/2025.08.28.672855)
 
 ## Package Management
 
